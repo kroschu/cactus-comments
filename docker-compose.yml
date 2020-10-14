@@ -1,0 +1,35 @@
+version: "3"
+
+
+services:
+  app:
+    build: .
+    environment:
+      - FLASK_ENV=development
+    volumes:
+      - .:/code
+
+  synapse:
+    image: matrixdotorg/synapse:v1.21.1
+    environment:
+      - SYNAPSE_CONFIG_PATH=/homeserver.yaml
+      # The container already runs as root. This is the UID / GID used by
+      # the entrypoint to start the matrix process. Fine for development
+      # purposes. Default: 990/990.
+      - UID=0
+      - GID=0
+    entrypoint: "/entrypoint.sh"
+    volumes:
+      - "./dev-environment/synapse/entrypoint.sh:/entrypoint.sh:ro"
+      - "./dev-environment/synapse/homeserver.yaml:/homeserver.yaml:ro"
+      - "./dev-environment/synapse/log.config:/localhost.log.config:ro"
+      - "./dev-environment/synapse/signing.key:/localhost.signing.key:ro"
+    ports:
+      - 127.0.0.1:8008:8008/tcp
+
+  element:
+    image: bubuntux/riot-web:v1.7.9
+    volumes:
+      - "./dev-environment/element-config.json:/etc/riot-web/config.json:ro"
+    ports:
+      - 127.0.0.1:8085:80
