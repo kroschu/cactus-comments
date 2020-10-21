@@ -6,6 +6,7 @@ services:
     build: .
     environment:
       - FLASK_ENV=development
+    command: ["flask", "run", "-h", "0.0.0.0"]
     volumes:
       - .:/code
 
@@ -24,6 +25,7 @@ services:
       - "./dev-environment/synapse/homeserver.yaml:/homeserver.yaml:ro"
       - "./dev-environment/synapse/log.config:/localhost.log.config:ro"
       - "./dev-environment/synapse/signing.key:/localhost.signing.key:ro"
+      - "./dev-environment/comment-appservice.yaml:/comment-appservice.yaml:ro"
     ports:
       - 127.0.0.1:8008:8008/tcp
 
