@@ -39,10 +39,14 @@ def authorization_required(app):
 @app.route("/_matrix/app/v1/transactions/<string:txn_id>", methods=["PUT"])
 @authorization_required(app)
 def new_transaction(txn_id: str):
-    events = request.get_json()["events"]
-    for event in events:
-        print(txn_id, event)
-    return jsonify({})
+    """Implement the Push API from the appservice specification.
+
+    The homeserver hits this endpoint to notify us of new events in our rooms.
+
+    Reference: https://matrix.org/docs/spec/application_service/r0.1.2#put-matrix-app-v1-transactions-txnid
+    """
+
+    return jsonify({}), 200
 
 
 @app.route("/rooms/<path:alias>", methods=["GET"])  # deprecated
