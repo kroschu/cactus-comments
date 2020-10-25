@@ -28,7 +28,9 @@ def authorization_required(f):
     def inner(*args, **kwargs):
         token = request.args.get("access_token", False)
         hs_token = current_app.config["hs_token"]
-        if not token or token != hs_token:
+        if not token:
+            return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}), 401
+        if token != hs_token:
             return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_FORBIDDEN"}), 403
         return f(*args, **kwargs)
 
