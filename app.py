@@ -1,6 +1,7 @@
 from functools import wraps
 
 from flask import Flask, current_app, jsonify, request
+import requests
 
 
 app = Flask(__name__)
@@ -8,6 +9,8 @@ app = Flask(__name__)
 
 # TODO: configuration handling
 app.config["hs_token"] = "b3b05236568ab46f0d98a978936c514eac93d8f90e6d5cd3895b3db5bb8d788b"
+app.config["as_token"] = "a2d7789eedb3c5076af0864f4af7bef77b1f250ac4e454c373c806876e939cca"
+app.config["homeserver"] = "http://synapse:8008"
 
 
 def authorization_required(f):
@@ -59,8 +62,43 @@ def query_room_alias(alias: str):
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#get-matrix-app-v1-rooms-roomalias
     """
 
-    # Create room here. This can be done after we have implemented auth.
-    print(alias)
+    # Create room
+    alias_localpart = alias.split(":")[0][1:]
+    r = requests.post(
+        current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
+        params={"access_token": current_app.config["as_token"]},
+        json={
+            "visibility": "private",
+            "room_alias_name": alias_localpart,
+            "creation_content": {"m.federate": True},
+            "initial_state": [
+                # Make the room public to whoever knows the link.
+                {
+                    "type": "m.room.join_rules",
+                    "content": {"join_rule": "public"},
+                },
+                # Allow guests to join the room.
+                {
+                    "type": "m.room.guest_access",
+                    "content": {"guest_access": "can_join"},
+                },
+                # Make future room history visible to anyone.
+                {
+                    "type": "m.room.history_visibility",
+                    "content": {"history_visibility": "world_readable"},
+                },
+            ],
+        },
+    )
+
+    if not r.ok:
+        # This should never happend. We indicate 404 - that the room does not
+        # exist - and an appropriate error message.
+        homeserver_err_msg = r.json().get("error", "no error message")
+        return jsonify({
+            "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
+            "error": "Unknown error. Error from homeserver: {homeserver_err_msg}.",
+        }), 404
 
     # 200, with an empty json object indicates that the room exists.
     return jsonify({}), 200
