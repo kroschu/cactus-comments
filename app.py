@@ -1,4 +1,6 @@
 from functools import wraps
+import random
+import re
 
 from flask import Flask, current_app, jsonify, request
 import requests
@@ -12,6 +14,37 @@ app.config["hs_token"] = "b3b05236568ab46f0d98a978936c514eac93d8f90e6d5cd3895b3d
 app.config["as_token"] = "a2d7789eedb3c5076af0864f4af7bef77b1f250ac4e454c373c806876e939cca"
 app.config["homeserver"] = "http://synapse:8008"
 app.config["user_id"] = "@_cactusbot:localhost:8008"
+app.config["namespace_regex"] = "#_comments_.*"
+
+
+HELP_MSG = """\
+🌵 Hi I'm here to help you with Cactus Comments (https://cactus.chat) 🌵
+
+To get started, register a namespace by typing:
+
+    register <namespace>
+
+Where <namespace> is replaced by any name you like. The namespace ensures that\
+ you are moderator in your comment sections 👮‍♀️
+
+After you have registered a namespace, go to \
+https://cactus.chat/docs/getting-started to learn how to embed comment sections
+wherever you like!
+
+You can read more about moderation here: https://cactus.chat/docs/moderation
+"""
+
+
+def _in_our_namespace(room_state_list):
+    """Return `True` if the room is in our namespace."""
+    for state in room_state_list:
+        if state["type"] != "m.room.canonical_alias":
+            continue
+        alias = state["content"]["alias"]
+        namespace_regex = current_app.config["namespace_regex"]
+        if re.match(namespace_regex, alias) is not None:
+            return True
+    return False
 
 
 def authorization_required(f):
@@ -52,16 +85,40 @@ def new_transaction(txn_id: str):
     events = request.get_json()["events"]
 
     for event in events:
+        room_id = event["room_id"]
         if event["type"] == "m.room.member":
             is_invite = event["content"]["membership"] == "invite"
             is_for_me = event["state_key"] == current_app.config["user_id"]
             if is_invite and is_for_me:
-                room_id = event["room_id"]
                 # Accept invite / join room
                 r = requests.post(
-                    current_app.config["homeserver"] + f"/_matrix/client/r0/rooms/{room_id}/join",
+                    current_app.config["homeserver"]
+                    + f"/_matrix/client/r0/rooms/{room_id}/join",
                     params={"access_token": current_app.config["as_token"]},
                     json={},
+                )
+
+        if event["type"] == "m.room.message":
+            msg = event["content"]["body"]
+            msgtype = event["content"]["msgtype"]
+            if not (msg == "help" and msgtype == "m.text"):
+                # For now, we only react to "help" messages
+                continue
+
+            r = requests.get(
+                current_app.config["homeserver"]
+                + f"/_matrix/client/r0/rooms/{room_id}/state",
+                params={"access_token": current_app.config["as_token"]},
+            )
+            state = r.json()
+            # Do not respond to comments with the content "help"
+            if not _in_our_namespace(state):
+                txn_id = random.randint(0, 1_000_000_000)
+                r = requests.put(
+                    current_app.config["homeserver"]
+                    + f"/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{txn_id}",
+                    params={"access_token": current_app.config["as_token"]},
+                    json={"msgtype": "m.text", "body": HELP_MSG,},
                 )
 
     return jsonify({}), 200
