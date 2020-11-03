@@ -41,8 +41,8 @@ def test_push_api_empty_success(appservice):
 
 def test_unauthorized_query_room_alias(appservice):
     r = appservice.get("/_matrix/app/v1/rooms/_comments_hi_there")
-    assert r.status_code == 403
-    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_FORBIDDEN"}
+    assert r.status_code == 401
+    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}
 
 
 def test_unauthorized_push_api_call(appservice):
@@ -61,5 +61,5 @@ def test_unauthorized_push_api_call_empty_token(appservice):
         query_string={"access_token": ""},
         json={"events": []},
     )
-    assert r.status_code == 403
-    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_FORBIDDEN"}
+    assert r.status_code == 401
+    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}
