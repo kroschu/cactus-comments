@@ -20,13 +20,17 @@ def appservice():
 
 
 def test_query_room_alias_200(appservice):
-    r = appservice.authorized_request("/_matrix/app/v1/rooms/%23_comments_hi_there")
+    r = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_hi_there:servername"
+    )
     assert r.status_code == 200
     assert r.get_json() == {}
 
 
 def test_query_room_alias_slashed(appservice):
-    r = appservice.authorized_request("/_matrix/app/v1/rooms/%23_comments_hi_t/here")
+    r = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_hi_t/here:servername"
+    )
     assert r.status_code == 200
     assert r.get_json() == {}
 
@@ -40,7 +44,7 @@ def test_push_api_empty_success(appservice):
 
 
 def test_unauthorized_query_room_alias(appservice):
-    r = appservice.get("/_matrix/app/v1/rooms/_comments_hi_there")
+    r = appservice.get("/_matrix/app/v1/rooms/_comments_hi_there:servername")
     assert r.status_code == 401
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}
 
