@@ -43,6 +43,22 @@ def test_query_room_alias_servername_with_underscore(appservice):
     assert r.get_json() == {}
 
 
+def test_query_room_alias_too_few_underscores(appservice):
+    r = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_hithere:servername"
+    )
+    assert r.status_code == 404
+    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
+
+
+def test_query_room_alias_too_many_underscores(appservice):
+    r = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_hi_there_friend:servername"
+    )
+    assert r.status_code == 404
+    assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
+
+
 def test_push_api_empty_success(appservice):
     r = appservice.authorized_request(
         "/_matrix/app/v1/transactions/42", method="PUT", json={"events": []},
