@@ -35,6 +35,14 @@ def test_query_room_alias_slashed(appservice):
     assert r.get_json() == {}
 
 
+def test_query_room_alias_servername_with_underscore(appservice):
+    r = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_hi_there:server_name"
+    )
+    assert r.status_code == 200
+    assert r.get_json() == {}
+
+
 def test_push_api_empty_success(appservice):
     r = appservice.authorized_request(
         "/_matrix/app/v1/transactions/42", method="PUT", json={"events": []},
