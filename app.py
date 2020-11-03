@@ -252,11 +252,13 @@ def query_room_alias(alias: str):
     )
 
     if not r.ok:
-        # TODO this is incorrect. This will fail if the room already exists, or
-        # the homeserver does not support room version
+        if r.json().get("errcode") == "M_ROOM_IN_USE":
+            # Room already exists!
+            return jsonify({}), 200
 
-        # This should never happend. We indicate 404 - that the room does not
-        # exist - and an appropriate error message.
+        # This can fail for a few reasons: if we messed up the request, created
+        # a room in an invalid state, or the room version is unsupported by the
+        # homeserver. Regardless, the room does not exist.
         homeserver_err_msg = r.json().get("error", "no error message")
         return jsonify({
             "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
