@@ -140,8 +140,6 @@ def new_transaction(txn_id: str):
                 continue
 
             namespace = msg.split(" ")[1]
-            # TODO Check for other invalid room alias names, e.g. length and
-            # invalid chars.
             if "_" in namespace:
                 error_msg = 'Sorry, underscore ("_") is not allowed in namespace names'
                 send_plaintext_msg(room_id, error_msg)
