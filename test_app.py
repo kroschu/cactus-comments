@@ -20,13 +20,13 @@ def appservice():
 
 
 def test_query_room_alias_200(appservice):
-    r = appservice.authorized_request("/_matrix/app/v1/rooms/_comments_hi_there")
+    r = appservice.authorized_request("/_matrix/app/v1/rooms/%23_comments_hi_there")
     assert r.status_code == 200
     assert r.get_json() == {}
 
 
 def test_query_room_alias_slashed(appservice):
-    r = appservice.authorized_request("/_matrix/app/v1/rooms/_comments_hi/there")
+    r = appservice.authorized_request("/_matrix/app/v1/rooms/%23_comments_hi_t/here")
     assert r.status_code == 200
     assert r.get_json() == {}
 
