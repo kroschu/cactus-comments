@@ -15,6 +15,10 @@ app.config["as_token"] = "a2d7789eedb3c5076af0864f4af7bef77b1f250ac4e454c373c806
 app.config["homeserver"] = "http://synapse:8008"
 app.config["user_id"] = "@_cactusbot:localhost:8008"
 app.config["namespace_regex"] = "#_comments_.*"
+# We assume that we own a prefix
+# TODO validate on startup that the appservice will work with the assigned
+# namespace
+app.config["namespace"] = "_comments_"
 
 
 HELP_MSG = """\
@@ -33,6 +37,22 @@ wherever you like!
 
 You can read more about moderation here: https://cactus.chat/docs/moderation
 """
+
+MODERATION_EXPLANATION = """\
+Hi there! You just registered a Cactus Comments namespace 🌵
+
+* insert brief explanation here and possible commands *
+"""
+
+
+def send_plaintext_msg(room_id, msg):
+    txn_id = random.randint(0, 1_000_000_000)
+    return requests.put(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{txn_id}",
+        params={"access_token": current_app.config["as_token"]},
+        json={"msgtype": "m.text", "body": msg},
+    )
 
 
 def _in_our_namespace(room_state_list):
@@ -99,27 +119,83 @@ def new_transaction(txn_id: str):
                 )
 
         if event["type"] == "m.room.message":
+            if event["content"]["msgtype"] != "m.text":
+                continue
             msg = event["content"]["body"]
-            msgtype = event["content"]["msgtype"]
-            if not (msg == "help" and msgtype == "m.text"):
-                # For now, we only react to "help" messages
+            if not (msg == "help" or msg.startswith("register")):
+                # Only react to "help" and "register <namespace>" messages
                 continue
 
+            # Make sure we don't respond to comments
             r = requests.get(
                 current_app.config["homeserver"]
                 + f"/_matrix/client/r0/rooms/{room_id}/state",
                 params={"access_token": current_app.config["as_token"]},
             )
-            state = r.json()
-            # Do not respond to comments with the content "help"
-            if not _in_our_namespace(state):
-                txn_id = random.randint(0, 1_000_000_000)
-                r = requests.put(
-                    current_app.config["homeserver"]
-                    + f"/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{txn_id}",
-                    params={"access_token": current_app.config["as_token"]},
-                    json={"msgtype": "m.text", "body": HELP_MSG,},
-                )
+            if _in_our_namespace(r.json()):
+                continue
+
+            if msg == "help":
+                send_plaintext_msg(room_id, HELP_MSG)
+                continue
+
+            namespace = msg.split(" ")[1]
+            # TODO Check for other invalid room alias names, e.g. length and
+            # invalid chars.
+            if "_" in namespace:
+                error_msg = 'Sorry, underscore ("_") is not allowed in namespace names'
+                send_plaintext_msg(room_id, error_msg)
+                continue
+
+            # Try to create, will fail if already exists
+            r = requests.post(
+                current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
+                params={"access_token": current_app.config["as_token"]},
+                json={
+                    "visibility": "private",
+                    "room_alias_name": current_app.config["namespace"] + namespace,
+                    "name": f"{namespace} moderation room",
+                    "topic": f"Moderation room for {namespace}. For more, visit https://cactus.chat",
+                    "invite": [event["sender"]],
+                    "creation_content": {"m.federate": True},
+                    "initial_state": [
+                        # Make the room invite only.
+                        {
+                            "type": "m.room.join_rules",
+                            "content": {"join_rule": "invite"},
+                        },
+                        # Make future room history visible to members since
+                        # they were invited.
+                        {
+                            "type": "m.room.history_visibility",
+                            "content": {"history_visibility": "invited"},
+                        },
+                    ],
+                    # Make sender admin in new room
+                    "power_level_content_override": {
+                        "users": {
+                            event["sender"]: 100,
+                            current_app.config["user_id"]: 100,
+                        }
+                    },
+                },
+            )
+            rjson = r.json()
+
+            if not r.ok:
+                errcode = rjson.get("errcode", "")
+                if errcode == "M_ROOM_IN_USE":
+                    msg = f"Sorry, {namespace} is already used by someone else."
+                    send_plaintext_msg(room_id, msg)
+                    continue
+                else:
+                    error_msg = rjson.get("error", "no error message")
+                    msg = f"Unknown error. Error from homeserver: {error_msg}."
+                    send_plaintext_msg(room_id, msg)
+                    continue
+
+            send_plaintext_msg(room_id, f"Created namespace {namespace} for you 🚀")
+            send_plaintext_msg(rjson["room_id"], MODERATION_EXPLANATION)
 
     return jsonify({}), 200
 
@@ -137,8 +213,17 @@ def query_room_alias(alias: str):
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#get-matrix-app-v1-rooms-roomalias
     """
 
-    # Create room
     alias_localpart = alias.split(":")[0][1:]
+
+    # There has to be exactly one more underscore in alias_localpart, than in
+    # the appservice namespace. Otherwise, the user is trying to join a
+    # moderation room or create a room with an invalid alias.
+    if current_app.config["namespace"].count("_") + 1 != alias_localpart.count("_"):
+        return jsonify({
+            "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
+        }), 404
+
+    # Create room
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         params={"access_token": current_app.config["as_token"]},
@@ -167,6 +252,9 @@ def query_room_alias(alias: str):
     )
 
     if not r.ok:
+        # TODO this is incorrect. This will fail if the room already exists, or
+        # the homeserver does not support room version
+
         # This should never happend. We indicate 404 - that the room does not
         # exist - and an appropriate error message.
         homeserver_err_msg = r.json().get("error", "no error message")
