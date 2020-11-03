@@ -59,6 +59,20 @@ def test_query_room_alias_too_many_underscores(appservice):
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
 
 
+def test_query_room_alias_already_exists(appservice):
+    # Make sure that we can join rooms that already exists
+    r1 = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_blog_post0:servername"
+    )
+    assert r1.status_code == 200
+    assert r1.get_json() == {}
+    r2 = appservice.authorized_request(
+        "/_matrix/app/v1/rooms/%23_comments_blog_post0:servername"
+    )
+    assert r2.status_code == 200
+    assert r2.get_json() == {}
+
+
 def test_push_api_empty_success(appservice):
     r = appservice.authorized_request(
         "/_matrix/app/v1/transactions/42", method="PUT", json={"events": []},
