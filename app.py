@@ -1,6 +1,7 @@
 from functools import wraps
 import random
 import re
+import urllib
 
 from flask import Flask, current_app, jsonify, request
 import requests
@@ -221,6 +222,26 @@ def query_room_alias(alias: str):
             "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
         }), 404
 
+    # Translate alias to room id for namespace moderation room.
+    splitting_colon = alias.index(":")
+    last_underscore = alias.rindex("_", 0, splitting_colon)
+    mod_alias = urllib.parse.quote(alias[:last_underscore] + alias[splitting_colon:])
+    r_mod_id = requests.get(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/directory/room/{mod_alias}",
+        params={"access_token": current_app.config["as_token"]},
+    )
+    if not r_mod_id.ok:
+        # Namespace does not exist.
+        return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
+    mod_room_id = r_mod_id.json()["room_id"]
+
+    r_power_level = requests.get(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/rooms/{mod_room_id}/state/m.room.power_levels",
+        params={"access_token": current_app.config["as_token"]},
+    )
+
     # Create room
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
@@ -246,6 +267,8 @@ def query_room_alias(alias: str):
                     "content": {"history_visibility": "world_readable"},
                 },
             ],
+            # Replicate power level from namespace moderation room
+            "power_level_content_override": r_power_level.json(),
         },
     )
 
