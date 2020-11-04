@@ -236,6 +236,7 @@ def query_room_alias(alias: str):
         return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
     mod_room_id = r_mod_id.json()["room_id"]
 
+    # Get power levels from moderation room
     r_power_level = requests.get(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/rooms/{mod_room_id}/state/m.room.power_levels",
@@ -285,6 +286,25 @@ def query_room_alias(alias: str):
             "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
             "error": "Unknown error. Error from homeserver: {homeserver_err_msg}.",
         }), 404
+
+    # Get banned users from moderation room
+    r_banned_users = requests.get(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/rooms/{mod_room_id}/state",
+        params={"access_token": current_app.config["as_token"]},
+    )
+    # Send ban events, one at a time...
+    room_id = r.json()["room_id"]
+    for state in r_banned_users.json():
+        if state["type"] != "m.room.member":
+            continue
+        if state["content"]["membership"] == "ban":
+            requests.post(
+                current_app.config["homeserver"]
+                + f"/_matrix/client/r0/rooms/{room_id}/ban",
+                params={"access_token": current_app.config["as_token"]},
+                json={"user_id": state["state_key"]},
+            )
 
     # 200, with an empty json object indicates that the room exists.
     return jsonify({}), 200
