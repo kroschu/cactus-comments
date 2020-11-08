@@ -56,6 +56,26 @@ def send_plaintext_msg(room_id, msg):
     )
 
 
+
+def namespace_alias_to_mod_room_id(alias):
+    """Convert any room alias to the mod room id for its' namespace."""
+    splitting_colon = alias.index(":")
+    last_underscore = alias.rindex("_", 0, splitting_colon)
+    mod_alias = urllib.parse.quote(alias[:last_underscore] + alias[splitting_colon:])
+    return requests.get(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/directory/room/{mod_alias}",
+        params={"access_token": current_app.config["as_token"]},
+    )
+
+
+def is_comment_section_room(alias):
+    # There has to be exactly one more underscore in alias, than in the
+    # appservice namespace. Otherwise, it is a moderation room or an invalid
+    # alias.
+    return current_app.config["namespace"].count("_") + 1 == alias.count("_")
+
+
 def _in_our_namespace(room_state_list):
     """Return `True` if the room is in our namespace."""
     for state in room_state_list:
@@ -118,8 +138,25 @@ def new_transaction(txn_id: str):
                     params={"access_token": current_app.config["as_token"]},
                     json={},
                 )
+            elif event["content"]["membership"] == "ban":
+                # Make sure the user is also banned in the moderation room
+                alias = requests.get(
+                    current_app.config["homeserver"]
+                    + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
+                    params={"access_token": current_app.config["as_token"]},
+                ).json()["alias"]
+                if is_comment_section_room(alias):
+                    r_mod_room = namespace_alias_to_mod_room_id(alias)
+                    room_id = r_mod_room.json()["room_id"]
+                    user_to_ban = event["state_key"]
+                    requests.post(
+                        current_app.config["homeserver"]
+                        + f"/_matrix/client/r0/rooms/{room_id}/ban",
+                        params={"access_token": current_app.config["as_token"]},
+                        json={"user_id": user_to_ban},
+                    )
 
-        if event["type"] == "m.room.message":
+        elif event["type"] == "m.room.message":
             if event["content"]["msgtype"] != "m.text":
                 continue
             msg = event["content"]["body"]
@@ -212,25 +249,12 @@ def query_room_alias(alias: str):
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#get-matrix-app-v1-rooms-roomalias
     """
 
-    alias_localpart = alias.split(":")[0][1:]
-
-    # There has to be exactly one more underscore in alias_localpart, than in
-    # the appservice namespace. Otherwise, the user is trying to join a
-    # moderation room or create a room with an invalid alias.
-    if current_app.config["namespace"].count("_") + 1 != alias_localpart.count("_"):
+    if not is_comment_section_room(alias):
         return jsonify({
             "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
         }), 404
 
-    # Translate alias to room id for namespace moderation room.
-    splitting_colon = alias.index(":")
-    last_underscore = alias.rindex("_", 0, splitting_colon)
-    mod_alias = urllib.parse.quote(alias[:last_underscore] + alias[splitting_colon:])
-    r_mod_id = requests.get(
-        current_app.config["homeserver"]
-        + f"/_matrix/client/r0/directory/room/{mod_alias}",
-        params={"access_token": current_app.config["as_token"]},
-    )
+    r_mod_id = namespace_alias_to_mod_room_id(alias)
     if not r_mod_id.ok:
         # Namespace does not exist.
         return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
@@ -244,6 +268,7 @@ def query_room_alias(alias: str):
     )
 
     # Create room
+    alias_localpart = alias.split(":")[0][1:]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         params={"access_token": current_app.config["as_token"]},
