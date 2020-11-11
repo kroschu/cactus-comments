@@ -1,0 +1,50 @@
+# To push to Docker Hub, set the environment variables `RELEASE_REGISTRY_USER`
+# and `RELEASE_REGISTRY_PASSWORD` in the Gitlab UI.
+
+
+variables:
+  RELEASE_REGISTRY: docker.io
+  RELEASE_REGISTRY_IMAGE: index.docker.io/cactuscomments/cactus-appservice
+
+  IMAGE_SHA: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
+  IMAGE_ROLLING: ${RELEASE_REGISTRY_IMAGE}:rolling
+
+
+stages:
+  - build
+  - release
+
+
+Build:
+  stage: build
+  needs: []
+  image:
+    name: gcr.io/kaniko-project/executor:debug-v1.3.0
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR
+      --dockerfile $CI_PROJECT_DIR/Dockerfile
+      --destination ${IMAGE_SHA}
+
+
+Release rolling main:
+  stage: release
+  needs:
+    - Build
+  image: alpine
+  variables:
+    GIT_STRATEGY: none  # We do not need the source code
+  tags:
+    - docker
+  before_script:
+    - apk add skopeo
+  rules:
+    - if: $CI_COMMIT_REF_NAME == "main"
+  script:
+    - skopeo copy
+      --src-creds=${CI_REGISTRY_USER}:${CI_BUILD_TOKEN}
+      --dest-creds=${RELEASE_REGISTRY_USER}:${RELEASE_REGISTRY_PASSWORD}
+      "docker://${IMAGE_SHA}"
+      "docker://${IMAGE_ROLLING}"
