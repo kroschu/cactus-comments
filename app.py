@@ -42,7 +42,15 @@ You can read more about moderation here: https://cactus.chat/docs/moderation
 MODERATION_EXPLANATION = """\
 Hi there! You just registered a Cactus Comments namespace 🌵
 
-* insert brief explanation here and possible commands *
+Visit https://cactus.chat/docs to get help embedding your comment sections anywhere!
+
+My task here is simple: I'm here to help ease moderation of your comment \
+sections!
+
+🚨 If you ban someone from one of your comment sections, I'll make sure \
+they're banned from all of your comment sections 👊 If you add a moderator to \
+this room, I'll make sure they have the same permissions across all your \
+comment sections 👮‍♀️👮‍♂️
 """
 
 
