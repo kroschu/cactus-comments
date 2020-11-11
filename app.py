@@ -1,25 +1,17 @@
 from functools import wraps
+import os
 import random
 import re
 import urllib
 
-from flask import Flask, current_app, jsonify, request
+from flask import Blueprint, Flask, current_app, jsonify, request
 import requests
 
 
-app = Flask(__name__)
+appservice_bp = Blueprint("appservice_endpoints", __name__)
 
 
-# TODO: configuration handling
-app.config["hs_token"] = "b3b05236568ab46f0d98a978936c514eac93d8f90e6d5cd3895b3db5bb8d788b"
-app.config["as_token"] = "a2d7789eedb3c5076af0864f4af7bef77b1f250ac4e454c373c806876e939cca"
-app.config["homeserver"] = "http://synapse:8008"
-app.config["user_id"] = "@_cactusbot:localhost:8008"
-app.config["namespace_regex"] = "#_comments_.*"
-# We assume that we own a prefix
-# TODO validate on startup that the appservice will work with the assigned
-# namespace
-app.config["namespace"] = "_comments_"
+CONFIG_ERROR_EXITCODE = 2
 
 
 HELP_MSG = """\
@@ -52,6 +44,60 @@ they're banned from all of your comment sections 👊 If you add a moderator to 
 this room, I'll make sure they have the same permissions across all your \
 comment sections 👮‍♀️👮‍♂️
 """
+
+
+def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix):
+    app = Flask(__name__)
+    app.register_blueprint(appservice_bp)
+
+    app.config["hs_token"] = hs_token
+    app.config["as_token"] = as_token
+    app.config["homeserver"] = homeserver
+    app.config["user_id"] = user_id
+    app.config["namespace_regex"] = namespace_regex
+    app.config["namespace"] = namespace_prefix
+
+    return app
+
+
+def create_app_from_env():
+    hs_token = os.getenv("CACTUS_HS_TOKEN")
+    as_token = os.getenv("CACTUS_AS_TOKEN")
+    homeserver = os.getenv("CACTUS_HOMESERVER_URL")
+    user_id = os.getenv("CACTUS_USER_ID")
+    namespace_regex = os.getenv("CACTUS_NAMESPACE_REGEX")
+    namespace_prefix = os.getenv("CACTUS_NAMESPACE_PREFIX")
+
+    if hs_token is None:
+        print("No homeserver token provided (CACTUS_HS_TOKEN).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    if as_token is None:
+        print("No appservice token provided (CACTUS_AS_TOKEN).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    if homeserver is None:
+        print("No homeserver url provided (CACTUS_HOMESERVER_URL).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    homeserver = homeserver.removesuffix("/")
+    if not (homeserver.startswith("http://") or homeserver.startswith("https://")):
+        print("Homeserver url missing http/s scheme (CACTUS_HOMESERVER_URL).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    if namespace_regex is None:
+        print("No namespace regex provided (CACTUS_NAMESPACE_REGEX).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    if namespace_prefix is None:
+        print("No namespace prefix provided (CACTUS_NAMESPACE_PREFIX).", file=sys.stderr)
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    if not namespace_regex[1:].startswith(namespace_prefix):
+        print("Namespace regex should start with the namespace prefix")
+        sys.exit(CONFIG_ERROR_EXITCODE)
+
+    return create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix)
 
 
 def send_plaintext_msg(room_id, msg):
@@ -127,8 +173,8 @@ def authorization_required(f):
     return inner
 
 
-@app.route("/transactions/<string:txn_id>", methods=["PUT"])  # deprecated
-@app.route("/_matrix/app/v1/transactions/<string:txn_id>", methods=["PUT"])
+@appservice_bp.route("/transactions/<string:txn_id>", methods=["PUT"])  # deprecated
+@appservice_bp.route("/_matrix/app/v1/transactions/<string:txn_id>", methods=["PUT"])
 @authorization_required
 def new_transaction(txn_id: str):
     """Implement the Push API from the appservice specification.
@@ -321,8 +367,8 @@ def new_transaction(txn_id: str):
     return jsonify({}), 200
 
 
-@app.route("/rooms/<path:alias>", methods=["GET"])  # deprecated
-@app.route("/_matrix/app/v1/rooms/<path:alias>", methods=["GET"])
+@appservice_bp.route("/rooms/<path:alias>", methods=["GET"])  # deprecated
+@appservice_bp.route("/_matrix/app/v1/rooms/<path:alias>", methods=["GET"])
 @authorization_required
 def query_room_alias(alias: str):
     """Implement the Room Alias Query API from the appservice specification.

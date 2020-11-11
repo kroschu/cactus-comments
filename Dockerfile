@@ -1,7 +1,8 @@
 FROM python:3.9.0
 
 # Force the stdout and stderr streams from python to be unbuffered.
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONUNBUFFERED=1\
+    FLASK_APP="app:create_app_from_env()"
 
 RUN pip install flask==1.1.2 pytest==6.1.1 requests==2.24.0
 
