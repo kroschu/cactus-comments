@@ -65,8 +65,8 @@ def create_app_from_env():
     as_token = os.getenv("CACTUS_AS_TOKEN")
     homeserver = os.getenv("CACTUS_HOMESERVER_URL")
     user_id = os.getenv("CACTUS_USER_ID")
-    namespace_regex = os.getenv("CACTUS_NAMESPACE_REGEX")
-    namespace_prefix = os.getenv("CACTUS_NAMESPACE_PREFIX")
+    namespace_regex = os.getenv("CACTUS_NAMESPACE_REGEX", r"#_comments_.*")
+    namespace_prefix = os.getenv("CACTUS_NAMESPACE_PREFIX", "_comments_")
 
     if hs_token is None:
         print("No homeserver token provided (CACTUS_HS_TOKEN).", file=sys.stderr)
