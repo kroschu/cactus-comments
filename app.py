@@ -57,6 +57,8 @@ def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespa
     app.config["namespace_regex"] = namespace_regex
     app.config["namespace"] = namespace_prefix
 
+    app.config["auth_header"] = {"Authorization": f"Bearer {as_token}"}
+
     return app
 
 
@@ -105,7 +107,7 @@ def send_plaintext_msg(room_id, msg):
     return requests.put(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{txn_id}",
-        params={"access_token": current_app.config["as_token"]},
+        headers=current_app.config["auth_header"],
         json={"msgtype": "m.text", "body": msg},
     )
 
@@ -119,7 +121,7 @@ def namespace_alias_to_mod_room_id(alias):
     return requests.get(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/directory/room/{mod_alias}",
-        params={"access_token": current_app.config["as_token"]},
+        headers=current_app.config["auth_header"],
     )
 
 
@@ -184,14 +186,14 @@ def new_transaction(txn_id: str):
                 r = requests.post(
                     current_app.config["homeserver"]
                     + f"/_matrix/client/r0/rooms/{room_id}/join",
-                    params={"access_token": current_app.config["as_token"]},
+                    headers=current_app.config["auth_header"],
                     json={},
                 )
             elif event["content"]["membership"] == "ban":
                 alias = requests.get(
                     current_app.config["homeserver"]
                     + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
-                    params={"access_token": current_app.config["as_token"]},
+                    headers=current_app.config["auth_header"],
                 ).json()["alias"]
                 if is_comment_section_room(alias):
                     # Make sure the user is also banned in the moderation room
@@ -201,7 +203,7 @@ def new_transaction(txn_id: str):
                     requests.post(
                         current_app.config["homeserver"]
                         + f"/_matrix/client/r0/rooms/{room_id}/ban",
-                        params={"access_token": current_app.config["as_token"]},
+                        headers=current_app.config["auth_header"],
                         json={"user_id": user_to_ban},
                     )
                 elif is_moderation_room(alias):
@@ -215,13 +217,13 @@ def new_transaction(txn_id: str):
                     joined_rooms = requests.get(
                         current_app.config["homeserver"]
                         + "/_matrix/client/r0/joined_rooms",
-                        params={"access_token": current_app.config["as_token"]},
+                        headers=current_app.config["auth_header"],
                     ).json()["joined_rooms"]
                     for room_id in joined_rooms:
                         r_room_alias = requests.get(
                             current_app.config["homeserver"]
                             + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                            params={"access_token": current_app.config["as_token"]},
+                            headers=current_app.config["auth_header"],
                         )
                         if not r_room_alias.ok:
                             # Room does not have a canonical alias
@@ -234,7 +236,7 @@ def new_transaction(txn_id: str):
                             requests.post(
                                 current_app.config["homeserver"]
                                 + f"/_matrix/client/r0/rooms/{room_id}/ban",
-                                params={"access_token": current_app.config["as_token"]},
+                                headers=current_app.config["auth_header"],
                                 json={"user_id": user_to_ban},
                             )
 
@@ -242,7 +244,7 @@ def new_transaction(txn_id: str):
             r_alias = requests.get(
                 current_app.config["homeserver"]
                 + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
-                params={"access_token": current_app.config["as_token"]},
+                headers=current_app.config["auth_header"],
             )
             if not r_alias.ok:
                 continue # Room does not have a canonical alias
@@ -254,13 +256,13 @@ def new_transaction(txn_id: str):
                 joined_rooms = requests.get(
                     current_app.config["homeserver"]
                     + "/_matrix/client/r0/joined_rooms",
-                    params={"access_token": current_app.config["as_token"]},
+                    headers=current_app.config["auth_header"],
                 ).json()["joined_rooms"]
                 for room_id in joined_rooms:
                     r_room_alias = requests.get(
                         current_app.config["homeserver"]
                         + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                        params={"access_token": current_app.config["as_token"]},
+                        headers=current_app.config["auth_header"],
                     )
                     if not r_room_alias.ok:
                         continue # Room does not have a canonical alias
@@ -271,7 +273,7 @@ def new_transaction(txn_id: str):
                         requests.put(
                             current_app.config["homeserver"]
                             + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.power_levels",
-                            params={"access_token": current_app.config["as_token"]},
+                            headers=current_app.config["auth_header"],
                             json=power_levels,
                         )
 
@@ -287,7 +289,7 @@ def new_transaction(txn_id: str):
             r = requests.get(
                 current_app.config["homeserver"]
                 + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                params={"access_token": current_app.config["as_token"]},
+                headers=current_app.config["auth_header"],
             )
             if r.ok:
                 alias = r.json()["alias"]
@@ -308,7 +310,7 @@ def new_transaction(txn_id: str):
             # Try to create, will fail if already exists
             r = requests.post(
                 current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
-                params={"access_token": current_app.config["as_token"]},
+                headers=current_app.config["auth_header"],
                 json={
                     "visibility": "private",
                     "room_alias_name": current_app.config["namespace"] + namespace,
@@ -386,7 +388,7 @@ def query_room_alias(alias: str):
     r_power_level = requests.get(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/rooms/{mod_room_id}/state/m.room.power_levels",
-        params={"access_token": current_app.config["as_token"]},
+        headers=current_app.config["auth_header"],
     )
 
     # Create room
@@ -396,7 +398,7 @@ def query_room_alias(alias: str):
     namespace_name = alias_localpart[_namespace_start_index:_last_underscore]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
-        params={"access_token": current_app.config["as_token"]},
+        headers=current_app.config["auth_header"],
         json={
             "visibility": "private",
             "name": f"{namespace_name} comment section",
@@ -442,7 +444,7 @@ def query_room_alias(alias: str):
     r_banned_users = requests.get(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/rooms/{mod_room_id}/state",
-        params={"access_token": current_app.config["as_token"]},
+        headers=current_app.config["auth_header"],
     )
     # Send ban events, one at a time...
     room_id = r.json()["room_id"]
@@ -453,7 +455,7 @@ def query_room_alias(alias: str):
             requests.post(
                 current_app.config["homeserver"]
                 + f"/_matrix/client/r0/rooms/{room_id}/ban",
-                params={"access_token": current_app.config["as_token"]},
+                headers=current_app.config["auth_header"],
                 json={"user_id": state["state_key"]},
             )
 
