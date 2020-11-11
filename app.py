@@ -354,11 +354,15 @@ def query_room_alias(alias: str):
 
     # Create room
     alias_localpart = alias.split(":")[0][1:]
+    _last_underscore = alias_localpart.rindex("_")
+    _namespace_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
+    namespace_name = alias_localpart[_namespace_start_index:_last_underscore]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         params={"access_token": current_app.config["as_token"]},
         json={
             "visibility": "private",
+            "name": f"{namespace_name} comment section",
             "room_alias_name": alias_localpart,
             "creation_content": {"m.federate": True},
             "initial_state": [
