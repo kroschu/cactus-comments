@@ -196,6 +196,43 @@ def new_transaction(txn_id: str):
                                 json={"user_id": user_to_ban},
                             )
 
+        elif event["type"] == "m.room.power_levels":
+            r_alias = requests.get(
+                current_app.config["homeserver"]
+                + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
+                params={"access_token": current_app.config["as_token"]},
+            )
+            if not r_alias.ok:
+                continue # Room does not have a canonical alias
+            mod_alias = r_alias.json()["alias"]
+            if is_moderation_room(mod_alias):
+                # When power_levels are changed in the moderation room, we want
+                # to replicate it to all rooms in the namespace
+                power_levels = event["content"]
+                joined_rooms = requests.get(
+                    current_app.config["homeserver"]
+                    + "/_matrix/client/r0/joined_rooms",
+                    params={"access_token": current_app.config["as_token"]},
+                ).json()["joined_rooms"]
+                for room_id in joined_rooms:
+                    r_room_alias = requests.get(
+                        current_app.config["homeserver"]
+                        + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
+                        params={"access_token": current_app.config["as_token"]},
+                    )
+                    if not r_room_alias.ok:
+                        continue # Room does not have a canonical alias
+                    room_alias = r_room_alias.json()["alias"]
+                    room_alias_localpart = room_alias.split(":")[0]
+                    mod_alias_localpart = mod_alias.split(":")[0]
+                    if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
+                        requests.put(
+                            current_app.config["homeserver"]
+                            + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.power_levels",
+                            params={"access_token": current_app.config["as_token"]},
+                            json=power_levels,
+                        )
+
         elif event["type"] == "m.room.message":
             if event["content"]["msgtype"] != "m.text":
                 continue
