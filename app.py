@@ -76,6 +76,13 @@ def is_comment_section_room(alias):
     return current_app.config["namespace"].count("_") + 1 == alias.count("_")
 
 
+def is_moderation_room(alias):
+    if current_app.config["namespace"].count("_") != alias.count("_"):
+        return False
+    namespace_regex = current_app.config["namespace_regex"]
+    return re.match(namespace_regex, alias) is not None
+
+
 def _in_our_namespace(room_state_list):
     """Return `True` if the room is in our namespace."""
     for state in room_state_list:
@@ -139,13 +146,13 @@ def new_transaction(txn_id: str):
                     json={},
                 )
             elif event["content"]["membership"] == "ban":
-                # Make sure the user is also banned in the moderation room
                 alias = requests.get(
                     current_app.config["homeserver"]
                     + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
                     params={"access_token": current_app.config["as_token"]},
                 ).json()["alias"]
                 if is_comment_section_room(alias):
+                    # Make sure the user is also banned in the moderation room
                     r_mod_room = namespace_alias_to_mod_room_id(alias)
                     room_id = r_mod_room.json()["room_id"]
                     user_to_ban = event["state_key"]
@@ -155,6 +162,39 @@ def new_transaction(txn_id: str):
                         params={"access_token": current_app.config["as_token"]},
                         json={"user_id": user_to_ban},
                     )
+                elif is_moderation_room(alias):
+                    # Ban event in a moderation room. Replicate to all rooms
+                    # in this namespace.
+
+                    # At this point it is very clear that our current
+                    # implementation architecture does not scale.. :-)
+
+                    mod_alias = alias  # for readability below
+                    joined_rooms = requests.get(
+                        current_app.config["homeserver"]
+                        + "/_matrix/client/r0/joined_rooms",
+                        params={"access_token": current_app.config["as_token"]},
+                    ).json()["joined_rooms"]
+                    for room_id in joined_rooms:
+                        r_room_alias = requests.get(
+                            current_app.config["homeserver"]
+                            + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
+                            params={"access_token": current_app.config["as_token"]},
+                        )
+                        if not r_room_alias.ok:
+                            # Room does not have a canonical alias
+                            continue
+                        room_alias = r_room_alias.json()["alias"]
+                        room_alias_localpart = room_alias.split(":")[0]
+                        mod_alias_localpart = mod_alias.split(":")[0]
+                        if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
+                            user_to_ban = event["state_key"]
+                            requests.post(
+                                current_app.config["homeserver"]
+                                + f"/_matrix/client/r0/rooms/{room_id}/ban",
+                                params={"access_token": current_app.config["as_token"]},
+                                json={"user_id": user_to_ban},
+                            )
 
         elif event["type"] == "m.room.message":
             if event["content"]["msgtype"] != "m.text":
