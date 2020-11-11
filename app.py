@@ -137,18 +137,6 @@ def is_moderation_room(alias):
     return re.match(namespace_regex, alias) is not None
 
 
-def _in_our_namespace(room_state_list):
-    """Return `True` if the room is in our namespace."""
-    for state in room_state_list:
-        if state["type"] != "m.room.canonical_alias":
-            continue
-        alias = state["content"]["alias"]
-        namespace_regex = current_app.config["namespace_regex"]
-        if re.match(namespace_regex, alias) is not None:
-            return True
-    return False
-
-
 def authorization_required(f):
     """Make sure that the homeserver passed the correct hs_token.
 
@@ -298,11 +286,14 @@ def new_transaction(txn_id: str):
             # Make sure we don't respond to comments
             r = requests.get(
                 current_app.config["homeserver"]
-                + f"/_matrix/client/r0/rooms/{room_id}/state",
+                + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
                 params={"access_token": current_app.config["as_token"]},
             )
-            if _in_our_namespace(r.json()):
-                continue
+            if r.ok:
+                alias = r.json()["alias"]
+                namespace_regex = current_app.config["namespace_regex"]
+                if re.match(namespace_regex, alias) is not None:
+                    continue
 
             if msg == "help":
                 send_plaintext_msg(room_id, HELP_MSG)
