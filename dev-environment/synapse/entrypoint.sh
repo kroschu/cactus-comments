@@ -14,6 +14,8 @@ infinite_register() {
     done
 }
 
-(infinite_register dev)&
+(infinite_register dev1)&
+(infinite_register dev2)&
+(infinite_register dev3)&
 
 eval /start.py
