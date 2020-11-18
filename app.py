@@ -17,14 +17,14 @@ CONFIG_ERROR_EXITCODE = 2
 HELP_MSG = """\
 🌵 Hi I'm here to help you with Cactus Comments (https://cactus.chat) 🌵
 
-To get started, register a namespace by typing:
+To get started, register a site by typing:
 
-    register <namespace>
+    register <sitename>
 
-Where <namespace> is replaced by any name you like. The namespace ensures that\
+Where <sitename> is replaced by any name you like. The site ensures that\
  you are moderator in your comment sections 👮‍♀️
 
-After you have registered a namespace, go to \
+After you have registered a site, go to \
 https://cactus.chat/docs/getting-started to learn how to embed comment sections
 wherever you like!
 
@@ -32,7 +32,7 @@ You can read more about moderation here: https://cactus.chat/docs/moderation
 """
 
 MODERATION_EXPLANATION = """\
-Hi there! You just registered a Cactus Comments namespace 🌵
+Hi there! You just registered a Cactus Comments site 🌵
 
 Visit https://cactus.chat/docs to get help embedding your comment sections anywhere!
 
@@ -208,7 +208,7 @@ def new_transaction(txn_id: str):
                     )
                 elif is_moderation_room(alias):
                     # Ban event in a moderation room. Replicate to all rooms
-                    # in this namespace.
+                    # for this site.
 
                     # At this point it is very clear that our current
                     # implementation architecture does not scale.. :-)
@@ -251,7 +251,7 @@ def new_transaction(txn_id: str):
             mod_alias = r_alias.json()["alias"]
             if is_moderation_room(mod_alias):
                 # When power_levels are changed in the moderation room, we want
-                # to replicate it to all rooms in the namespace
+                # to replicate it to all rooms for the site
                 power_levels = event["content"]
                 joined_rooms = requests.get(
                     current_app.config["homeserver"]
@@ -282,7 +282,7 @@ def new_transaction(txn_id: str):
                 continue
             msg = event["content"]["body"]
             if not (msg == "help" or msg.startswith("register")):
-                # Only react to "help" and "register <namespace>" messages
+                # Only react to "help" and "register <sitename>" messages
                 continue
 
             # Make sure we don't respond to comments
@@ -301,9 +301,9 @@ def new_transaction(txn_id: str):
                 send_plaintext_msg(room_id, HELP_MSG)
                 continue
 
-            namespace = msg.split(" ")[1]
-            if "_" in namespace:
-                error_msg = 'Sorry, underscore ("_") is not allowed in namespace names'
+            sitename = msg.split(" ")[1]
+            if "_" in sitename:
+                error_msg = 'Sorry, underscore ("_") is not allowed in site names'
                 send_plaintext_msg(room_id, error_msg)
                 continue
 
@@ -313,9 +313,9 @@ def new_transaction(txn_id: str):
                 headers=current_app.config["auth_header"],
                 json={
                     "visibility": "private",
-                    "room_alias_name": current_app.config["namespace"] + namespace,
-                    "name": f"{namespace} moderation room",
-                    "topic": f"Moderation room for {namespace}. For more, visit https://cactus.chat",
+                    "room_alias_name": current_app.config["namespace"] + sitename,
+                    "name": f"{sitename} moderation room",
+                    "topic": f"Moderation room for {sitename}. For more, visit https://cactus.chat",
                     "invite": [event["sender"]],
                     "creation_content": {"m.federate": True},
                     "initial_state": [
@@ -345,7 +345,7 @@ def new_transaction(txn_id: str):
             if not r.ok:
                 errcode = rjson.get("errcode", "")
                 if errcode == "M_ROOM_IN_USE":
-                    msg = f"Sorry, {namespace} is already used by someone else."
+                    msg = f"Sorry, {sitename} is already used by someone else."
                     send_plaintext_msg(room_id, msg)
                     continue
                 else:
@@ -354,7 +354,7 @@ def new_transaction(txn_id: str):
                     send_plaintext_msg(room_id, msg)
                     continue
 
-            send_plaintext_msg(room_id, f"Created namespace {namespace} for you 🚀")
+            send_plaintext_msg(room_id, f"Created site {sitename} for you 🚀")
             send_plaintext_msg(rjson["room_id"], MODERATION_EXPLANATION)
 
     return jsonify({}), 200
@@ -380,7 +380,7 @@ def query_room_alias(alias: str):
 
     r_mod_id = namespace_alias_to_mod_room_id(alias)
     if not r_mod_id.ok:
-        # Namespace does not exist.
+        # Site does not exist.
         return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
     mod_room_id = r_mod_id.json()["room_id"]
 
@@ -394,14 +394,14 @@ def query_room_alias(alias: str):
     # Create room
     alias_localpart = alias.split(":")[0][1:]
     _last_underscore = alias_localpart.rindex("_")
-    _namespace_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
-    namespace_name = alias_localpart[_namespace_start_index:_last_underscore]
+    _sitename_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
+    sitename = alias_localpart[_sitename_start_index:_last_underscore]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
         json={
             "visibility": "private",
-            "name": f"{namespace_name} comment section",
+            "name": f"{sitename} comment section",
             "room_alias_name": alias_localpart,
             "creation_content": {"m.federate": True},
             "initial_state": [
@@ -421,7 +421,7 @@ def query_room_alias(alias: str):
                     "content": {"history_visibility": "world_readable"},
                 },
             ],
-            # Replicate power level from namespace moderation room
+            # Replicate power level from site moderation room
             "power_level_content_override": r_power_level.json(),
         },
     )

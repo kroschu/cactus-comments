@@ -26,10 +26,10 @@ https://cactus.chat/docs/getting-started.
 ## What is this?
 
 This part of the stack is mainly interacted with by site administrators. The
-purpose is to assign everyone a namespace, provide an interactive user
-interface and to help ease moderation. For now, this services creates rooms
-with proper permissions / initial configuration, bans users across your entire
-namespace and promotes moderators across your entire namespace.
+purpose is to assign everyone a site, provide an interactive user interface and
+to help ease moderation. For now, this services creates rooms with proper
+permissions / initial configuration, bans users across your entire site
+and promotes moderators across your entire site.
 
 
 ## Configuration
