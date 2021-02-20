@@ -15,4 +15,4 @@ sender_localpart: "cactusbot"
 namespaces:
   aliases:
     - exclusive: true
-      regex: "#_comments_.*"
+      regex: "#comments_.*"

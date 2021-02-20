@@ -21,7 +21,7 @@ def appservice():
 
 def test_query_room_alias_200(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_hi_there:servername"
+        "/_matrix/app/v1/rooms/%23comments_hi_there:servername"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
@@ -29,7 +29,7 @@ def test_query_room_alias_200(appservice):
 
 def test_query_room_alias_slashed(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_hi_t/here:servername"
+        "/_matrix/app/v1/rooms/%23comments_hi_t/here:servername"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
@@ -37,7 +37,7 @@ def test_query_room_alias_slashed(appservice):
 
 def test_query_room_alias_servername_with_underscore(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_hi_there:server_name"
+        "/_matrix/app/v1/rooms/%23comments_hi_there:server_name"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
@@ -45,7 +45,7 @@ def test_query_room_alias_servername_with_underscore(appservice):
 
 def test_query_room_alias_too_few_underscores(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_hithere:servername"
+        "/_matrix/app/v1/rooms/%23comments_hithere:servername"
     )
     assert r.status_code == 404
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
@@ -53,7 +53,7 @@ def test_query_room_alias_too_few_underscores(appservice):
 
 def test_query_room_alias_too_many_underscores(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_hi_there_friend:servername"
+        "/_matrix/app/v1/rooms/%23comments_hi_there_friend:servername"
     )
     assert r.status_code == 404
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
@@ -62,12 +62,12 @@ def test_query_room_alias_too_many_underscores(appservice):
 def test_query_room_alias_already_exists(appservice):
     # Make sure that we can join rooms that already exists
     r1 = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_blog_post0:servername"
+        "/_matrix/app/v1/rooms/%23comments_blog_post0:servername"
     )
     assert r1.status_code == 200
     assert r1.get_json() == {}
     r2 = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23_comments_blog_post0:servername"
+        "/_matrix/app/v1/rooms/%23comments_blog_post0:servername"
     )
     assert r2.status_code == 200
     assert r2.get_json() == {}
@@ -82,7 +82,7 @@ def test_push_api_empty_success(appservice):
 
 
 def test_unauthorized_query_room_alias(appservice):
-    r = appservice.get("/_matrix/app/v1/rooms/_comments_hi_there:servername")
+    r = appservice.get("/_matrix/app/v1/rooms/comments_hi_there:servername")
     assert r.status_code == 401
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}
 
