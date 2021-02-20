@@ -113,8 +113,8 @@ def send_plaintext_msg(room_id, msg):
 
 
 
-def namespace_alias_to_mod_room_id(alias):
-    """Convert any room alias to the mod room id for its' namespace."""
+def alias_to_mod_room_id(alias):
+    """Convert any room alias to the mod room id for its' site."""
     splitting_colon = alias.index(":")
     last_underscore = alias.rindex("_", 0, splitting_colon)
     mod_alias = urllib.parse.quote(alias[:last_underscore] + alias[splitting_colon:])
@@ -197,7 +197,7 @@ def new_transaction(txn_id: str):
                 ).json()["alias"]
                 if is_comment_section_room(alias):
                     # Make sure the user is also banned in the moderation room
-                    r_mod_room = namespace_alias_to_mod_room_id(alias)
+                    r_mod_room = alias_to_mod_room_id(alias)
                     room_id = r_mod_room.json()["room_id"]
                     user_to_ban = event["state_key"]
                     requests.post(
@@ -378,7 +378,7 @@ def query_room_alias(alias: str):
             "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
         }), 404
 
-    r_mod_id = namespace_alias_to_mod_room_id(alias)
+    r_mod_id = alias_to_mod_room_id(alias)
     if not r_mod_id.ok:
         # Site does not exist.
         return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
