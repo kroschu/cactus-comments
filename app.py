@@ -173,19 +173,31 @@ def make_sure_user_is_registered():
     # but only really runs the first time.
     if not current_app.config.get("registered", False):
         # First time running
+
+        user_id = current_app.config["user_id"]
+
+        # Register user
         r = requests.post(
             current_app.config["homeserver"] + f"/_matrix/client/r0/register",
             json={
-                "username": localpart_from_user_id(current_app.config["user_id"]),
+                "username": localpart_from_user_id(user_id),
                 "type": "m.login.application_service",
             },
             params={"kind": "user"},
             headers=current_app.config["auth_header"],
         )
-        if r.ok or r.json()["errcode"] == "M_USER_IN_USE":
-            current_app.config["registered"] = True
-            return
-        raise ValueError("Failed to register user.")
+        if not (r.ok or r.json()["errcode"] == "M_USER_IN_USE"):
+            raise ValueError("Failed to register user.")
+
+        # Change display name
+        requests.put(
+            current_app.config["homeserver"]
+            + f"/_matrix/client/r0/profile/{user_id}/displayname",
+            json={"displayname": "Cactus Comments"},
+            headers=current_app.config["auth_header"],
+        )
+
+        current_app.config["registered"] = True
 
 
 @appservice_bp.route("/transactions/<string:txn_id>", methods=["PUT"])  # deprecated
