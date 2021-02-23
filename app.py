@@ -197,6 +197,14 @@ def make_sure_user_is_registered():
             headers=current_app.config["auth_header"],
         )
 
+        # Change avatar / profile image
+        requests.put(
+            current_app.config["homeserver"]
+            + f"/_matrix/client/r0/profile/{user_id}/avatar_url",
+            json={"avatar_url": "mxc://matrix.org/gdgXnTHPpGqCsIPAaUNgoHHV"},
+            headers=current_app.config["auth_header"],
+        )
+
         current_app.config["registered"] = True
 
 
