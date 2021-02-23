@@ -112,7 +112,6 @@ def send_plaintext_msg(room_id, msg):
     )
 
 
-
 def alias_to_mod_room_id(alias):
     """Convert any room alias to the mod room id for its' site."""
     splitting_colon = alias.index(":")
@@ -163,6 +162,32 @@ def authorization_required(f):
     return inner
 
 
+def localpart_from_user_id(user_id):
+    # https://matrix.org/docs/spec/appendices#user-identifiers
+    return re.match(r"^@([a-zA-Z0-9._=/-]+):", user_id).group(1)
+
+
+def make_sure_user_is_registered():
+    # Apparently, there are no `before_first_request` on blueprints. Therefore,
+    # we abuse the app config a bit, so this function can be called many times
+    # but only really runs the first time.
+    if not current_app.config.get("registered", False):
+        # First time running
+        r = requests.post(
+            current_app.config["homeserver"] + f"/_matrix/client/r0/register",
+            json={
+                "username": localpart_from_user_id(current_app.config["user_id"]),
+                "type": "m.login.application_service",
+            },
+            params={"kind": "user"},
+            headers=current_app.config["auth_header"],
+        )
+        if r.ok or r.json()["errcode"] == "M_USER_IN_USE":
+            current_app.config["registered"] = True
+            return
+        raise ValueError("Failed to register user.")
+
+
 @appservice_bp.route("/transactions/<string:txn_id>", methods=["PUT"])  # deprecated
 @appservice_bp.route("/_matrix/app/v1/transactions/<string:txn_id>", methods=["PUT"])
 @authorization_required
@@ -173,6 +198,8 @@ def new_transaction(txn_id: str):
 
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#put-matrix-app-v1-transactions-txnid
     """
+
+    make_sure_user_is_registered()
 
     events = request.get_json()["events"]
 
@@ -372,6 +399,8 @@ def query_room_alias(alias: str):
 
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#get-matrix-app-v1-rooms-roomalias
     """
+
+    make_sure_user_is_registered()
 
     if not is_comment_section_room(alias):
         return jsonify({
