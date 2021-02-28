@@ -45,6 +45,7 @@ Build:
 
 
 Release rolling main:
+  <<: *release-default
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
   script:
@@ -56,6 +57,7 @@ Release rolling main:
 
 
 Release version:
+  <<: *release-default
   rules:
       # Matches <version core> from SemVer 2.0.0 BNF grammar.
       # Ex. 2.3.4, but not 2.3.4-rc
