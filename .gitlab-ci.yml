@@ -8,6 +8,8 @@ variables:
 
   IMAGE_SHA: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}
   IMAGE_ROLLING: ${RELEASE_REGISTRY_IMAGE}:rolling
+  IMAGE_VERSION: ${RELEASE_REGISTRY_IMAGE}:${CI_COMMIT_TAG}
+  IMAGE_LATEST: ${RELEASE_REGISTRY_IMAGE}:latest
 
 
 stages:
@@ -29,7 +31,7 @@ Build:
       --destination ${IMAGE_SHA}
 
 
-Release rolling main:
+.release-default: &release-default
   stage: release
   needs:
     - Build
@@ -40,6 +42,9 @@ Release rolling main:
     - docker
   before_script:
     - apk add skopeo
+
+
+Release rolling main:
   rules:
     - if: $CI_COMMIT_REF_NAME == "main"
   script:
@@ -48,3 +53,21 @@ Release rolling main:
       --dest-creds=${RELEASE_REGISTRY_USER}:${RELEASE_REGISTRY_PASSWORD}
       "docker://${IMAGE_SHA}"
       "docker://${IMAGE_ROLLING}"
+
+
+Release version:
+  rules:
+      # Matches <version core> from SemVer 2.0.0 BNF grammar.
+      # Ex. 2.3.4, but not 2.3.4-rc
+      - if: $CI_COMMIT_TAG =~ /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/
+  script:
+    - skopeo copy
+      --src-creds=${CI_REGISTRY_USER}:${CI_BUILD_TOKEN}
+      --dest-creds=${RELEASE_REGISTRY_USER}:${RELEASE_REGISTRY_PASSWORD}
+      "docker://${IMAGE_SHA}"
+      "docker://${IMAGE_VERSION}"
+    - skopeo copy
+      --src-creds=${CI_REGISTRY_USER}:${CI_BUILD_TOKEN}
+      --dest-creds=${RELEASE_REGISTRY_USER}:${RELEASE_REGISTRY_PASSWORD}
+      "docker://${IMAGE_SHA}"
+      "docker://${IMAGE_LATEST}"
