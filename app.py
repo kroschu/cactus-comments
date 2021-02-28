@@ -25,16 +25,14 @@ Where <sitename> is replaced by any name you like. The site ensures that\
  you are moderator in your comment sections 👮‍♀️
 
 After you have registered a site, go to \
-https://cactus.chat/docs/getting-started to learn how to embed comment sections
-wherever you like!
-
-You can read more about moderation here: https://cactus.chat/docs/moderation
+https://cactus.chat/docs/getting-started/introduction/ to learn how to embed \
+comment sections wherever you like!
 """
 
 MODERATION_EXPLANATION = """\
 Hi there! You just registered a Cactus Comments site 🌵
 
-Visit https://cactus.chat/docs to get help embedding your comment sections anywhere!
+Visit https://cactus.chat/ to get help embedding your comment sections anywhere!
 
 My task here is simple: I'm here to help ease moderation of your comment \
 sections!
