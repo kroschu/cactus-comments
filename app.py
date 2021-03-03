@@ -347,7 +347,19 @@ def new_transaction(txn_id: str):
                 send_plaintext_msg(room_id, HELP_MSG)
                 continue
 
-            sitename = msg.split(" ")[1]
+            command = msg.split(" ")
+            if len(command) != 2:
+                error_msg = 'To register a site, type "register <sitename>"'
+                send_plaintext_msg(room_id, error_msg)
+                continue
+
+            sitename = command[1]
+
+            if not sitename:
+                error_msg = 'To register a site, type "register <sitename>"'
+                send_plaintext_msg(room_id, error_msg)
+                continue
+
             if "_" in sitename:
                 error_msg = 'Sorry, underscore ("_") is not allowed in site names'
                 send_plaintext_msg(room_id, error_msg)
