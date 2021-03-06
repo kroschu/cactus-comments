@@ -456,12 +456,13 @@ def query_room_alias(alias: str):
     _last_underscore = alias_localpart.rindex("_")
     _sitename_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
     sitename = alias_localpart[_sitename_start_index:_last_underscore]
+    comment_section_id = alias_localpart[_last_underscore + 1:]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
         json={
             "visibility": "private",
-            "name": f"{sitename} comment section",
+            "name": f"{sitename} comment section ({comment_section_id})",
             "room_alias_name": alias_localpart,
             "creation_content": {"m.federate": True},
             "initial_state": [
