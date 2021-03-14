@@ -271,7 +271,7 @@ def new_transaction(txn_id: str):
                             + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
                             headers=current_app.config["auth_header"],
                         )
-                        if not r_room_alias.ok:
+                        if not r_room_alias.ok or "alias" not in r_room_alias.json():
                             # Room does not have a canonical alias
                             continue
                         room_alias = r_room_alias.json()["alias"]
