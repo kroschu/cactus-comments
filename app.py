@@ -318,7 +318,7 @@ def new_transaction(txn_id: str):
                         )
 
         elif event["type"] == "m.room.message":
-            if event["content"]["msgtype"] != "m.text":
+            if event["content"].get("msgtype") != "m.text":
                 continue
             msg = event["content"]["body"]
             if not (msg == "help" or msg.startswith("register")):
