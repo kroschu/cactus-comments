@@ -123,6 +123,18 @@ def alias_to_mod_room_id(alias):
     )
 
 
+def canonical_room_alias(room_id):
+    """Get the canonical room alias (or None) from a room id. """
+    r = requests.get(
+        current_app.config["homeserver"]
+        + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
+        headers=current_app.config["auth_header"]
+    )
+    if not r.ok or "alias" not in r.json():
+        return None
+    return r.json()["alias"]
+
+
 def is_comment_section_room(alias):
     # There has to be exactly one more underscore in alias, than in the
     # appservice namespace. Otherwise, it is a moderation room or an invalid
@@ -236,11 +248,9 @@ def new_transaction(txn_id: str):
                     json={},
                 )
             elif event["content"]["membership"] == "ban":
-                alias = requests.get(
-                    current_app.config["homeserver"]
-                    + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
-                    headers=current_app.config["auth_header"],
-                ).json()["alias"]
+                alias = canonical_room_alias(event['room_id'])
+                if not alias:
+                    continue
                 if is_comment_section_room(alias):
                     # Make sure the user is also banned in the moderation room
                     r_mod_room = alias_to_mod_room_id(alias)
@@ -266,15 +276,9 @@ def new_transaction(txn_id: str):
                         headers=current_app.config["auth_header"],
                     ).json()["joined_rooms"]
                     for room_id in joined_rooms:
-                        r_room_alias = requests.get(
-                            current_app.config["homeserver"]
-                            + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                            headers=current_app.config["auth_header"],
-                        )
-                        if not r_room_alias.ok or "alias" not in r_room_alias.json():
-                            # Room does not have a canonical alias
+                        room_alias = canonical_room_alias(room_id)
+                        if not room_alias:
                             continue
-                        room_alias = r_room_alias.json()["alias"]
                         room_alias_localpart = room_alias.split(":")[0]
                         mod_alias_localpart = mod_alias.split(":")[0]
                         if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
@@ -287,14 +291,9 @@ def new_transaction(txn_id: str):
                             )
 
         elif event["type"] == "m.room.power_levels":
-            r_alias = requests.get(
-                current_app.config["homeserver"]
-                + f"/_matrix/client/r0/rooms/{event['room_id']}/state/m.room.canonical_alias",
-                headers=current_app.config["auth_header"],
-            )
-            if not r_alias.ok:
-                continue # Room does not have a canonical alias
-            mod_alias = r_alias.json()["alias"]
+            mod_alias = canonical_room_alias(event['room_id'])
+            if not mod_alias:
+                continue
             if is_moderation_room(mod_alias):
                 # When power_levels are changed in the moderation room, we want
                 # to replicate it to all rooms for the site
@@ -305,14 +304,9 @@ def new_transaction(txn_id: str):
                     headers=current_app.config["auth_header"],
                 ).json()["joined_rooms"]
                 for room_id in joined_rooms:
-                    r_room_alias = requests.get(
-                        current_app.config["homeserver"]
-                        + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                        headers=current_app.config["auth_header"],
-                    )
-                    if not r_room_alias.ok:
-                        continue # Room does not have a canonical alias
-                    room_alias = r_room_alias.json()["alias"]
+                    room_alias = canonical_room_alias(room_id)
+                    if not room_alias:
+                        continue
                     room_alias_localpart = room_alias.split(":")[0]
                     mod_alias_localpart = mod_alias.split(":")[0]
                     if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
@@ -332,13 +326,8 @@ def new_transaction(txn_id: str):
                 continue
 
             # Make sure we don't respond to comments
-            r = requests.get(
-                current_app.config["homeserver"]
-                + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-                headers=current_app.config["auth_header"],
-            )
-            if r.ok:
-                alias = r.json()["alias"]
+            alias = canonical_room_alias(room_id)
+            if alias:
                 namespace_regex = current_app.config["namespace_regex"]
                 if re.match(namespace_regex, alias) is not None:
                     continue
