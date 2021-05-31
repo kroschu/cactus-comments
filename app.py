@@ -1,4 +1,4 @@
-from functools import wraps
+from functools import lru_cache, wraps
 import os
 import random
 import re
@@ -123,6 +123,7 @@ def alias_to_mod_room_id(alias):
     )
 
 
+@lru_cache(maxsize=10000)
 def canonical_room_alias(room_id):
     """Get the canonical room alias (or None) from a room id. """
     r = requests.get(
