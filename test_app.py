@@ -1,10 +1,103 @@
+import os
 import pytest
+import random
+import urllib
+import requests
+import uuid
 
-from app import app
+from app import create_app_from_env
+
+
+@pytest.fixture
+def registered_sitename():
+    """ Register `sitename` as user "dev1". """
+    sitename = str(uuid.uuid4())
+    homeserver_url = os.environ["CACTUS_HOMESERVER_URL"]
+    userid, password = "@dev1:localhost:8008", "dev1"
+
+    # log in
+    r = requests.post(
+        f"{homeserver_url}/_matrix/client/r0/login",
+        json={
+            "type": "m.login.password",
+            "identifier": {
+              "type": "m.id.user",
+              "user": userid
+            },
+            "password": password
+        }
+    )
+    assert r.status_code == 200, f"Login as {userid} failed: {r.status_code}"
+    access_token = r.json()["access_token"]
+    server_name = r.json()["home_server"]
+    headers = {"Authorization": f"Bearer {access_token}"}
+
+    # create a new room
+    r = requests.post(
+        f"{homeserver_url}/_matrix/client/r0/createRoom",
+        json={"preset": "private_chat"},
+        headers=headers
+    )
+    assert r.status_code == 200
+    room_id = r.json()["room_id"]
+
+    # invite cactusbot to the room
+    cactusbot_userid = f"@cactusbot:{server_name}"
+    r = requests.post(
+        f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/invite",
+        json={ "user_id": cactusbot_userid },
+        headers=headers
+    )
+    errmsg = f"Error inviting {cactusbot_userid}: {r.json()}"
+    assert r.status_code == 200, errmsg
+
+    # wait for cactusbot to join
+    joined = False
+    while not joined:
+        r = requests.get(
+            f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/state/m.room.member/{cactusbot_userid}",
+            headers=headers
+        )
+        assert r.status_code == 200
+        joined = r.json()["membership"] == "join"
+
+    # send "register" message
+    r = requests.put(
+        f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{random.random()}",
+        json={
+            "msgtype": "m.text",
+            "body": f"register {sitename}"
+        },
+        headers=headers
+    )
+    assert r.status_code == 200, f"Failed sending message: {r.json()}"
+
+    # check for response
+    cactusbot_messages = []
+    next_batch = None
+    while not cactusbot_messages:
+        url = f"{homeserver_url}/_matrix/client/r0/sync"
+        if isinstance(next_batch, str):
+            url = f"{url}?since={next_batch}"
+        r = requests.get(url, headers=headers)
+        assert r.status_code == 200
+        events = r.json()["rooms"]["join"][room_id]["timeline"]["events"]
+        cactusbot_messages += [
+            e for e in events
+            if e["sender"] == cactusbot_userid and e["type"] == "m.room.message"
+        ]
+    assert len(cactusbot_messages) == 1
+    msg_body = cactusbot_messages[0]["content"]["body"]
+    expected_body = f"Created site {sitename} for you 🚀"
+    assert msg_body == expected_body
+
+    return (access_token, sitename)
 
 
 @pytest.fixture
 def appservice():
+    app = create_app_from_env()
+
     with app.test_client() as c:
 
         def authorized_request(*args, **kwargs):
@@ -19,9 +112,10 @@ def appservice():
         yield c
 
 
-def test_query_room_alias_200(appservice):
+def test_query_room_alias_200(appservice, registered_sitename):
+    _, sitename = registered_sitename
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_hi_there:servername"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}_there:localhost:8008"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
