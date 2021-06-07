@@ -6,3 +6,4 @@ CACTUS_HOMESERVER_URL=http://synapse:8008
 CACTUS_USER_ID=@cactusbot:localhost:8008
 CACTUS_NAMESPACE_REGEX=#comments_.*
 CACTUS_NAMESPACE_PREFIX=comments_
+CACTUS_REGISTRATION_REGEX=@dev1:localhost:8008|@dev2:localhost:8008

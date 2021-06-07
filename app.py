@@ -45,7 +45,7 @@ comment sections 👮‍♀️👮‍♂️
 """
 
 
-def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix):
+def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix, register_user_regex):
     app = Flask(__name__)
     app.register_blueprint(appservice_bp)
 
@@ -55,6 +55,7 @@ def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespa
     app.config["user_id"] = user_id
     app.config["namespace_regex"] = namespace_regex
     app.config["namespace"] = namespace_prefix
+    app.config["register_user_regex"] = register_user_regex
 
     app.config["auth_header"] = {"Authorization": f"Bearer {as_token}"}
 
@@ -68,6 +69,7 @@ def create_app_from_env():
     user_id = os.getenv("CACTUS_USER_ID")
     namespace_regex = os.getenv("CACTUS_NAMESPACE_REGEX", r"#comments_.*")
     namespace_prefix = os.getenv("CACTUS_NAMESPACE_PREFIX", "comments_")
+    register_user_regex = os.getenv("CACTUS_REGISTRATION_REGEX", r"@.*:.*")
 
     if hs_token is None:
         print("No homeserver token provided (CACTUS_HS_TOKEN).", file=sys.stderr)
@@ -98,7 +100,7 @@ def create_app_from_env():
         print("Namespace regex should start with the namespace prefix")
         sys.exit(CONFIG_ERROR_EXITCODE)
 
-    return create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix)
+    return create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix, register_user_regex)
 
 
 def send_plaintext_msg(room_id, msg):
@@ -178,6 +180,8 @@ def localpart_from_user_id(user_id):
     # https://matrix.org/docs/spec/appendices#user-identifiers
     return re.match(r"^@([a-zA-Z0-9._=/-]+):", user_id).group(1)
 
+def is_user_allowed_register(user_id):
+    return re.match(current_app.config["register_user_regex"], user_id) is not None
 
 def make_sure_user_is_registered():
     # Apparently, there are no `before_first_request` on blueprints. Therefore,
@@ -241,13 +245,23 @@ def new_transaction(txn_id: str):
             is_invite = event["content"]["membership"] == "invite"
             is_for_me = event["state_key"] == current_app.config["user_id"]
             if is_invite and is_for_me:
-                # Accept invite / join room
-                r = requests.post(
-                    current_app.config["homeserver"]
-                    + f"/_matrix/client/r0/rooms/{room_id}/join",
-                    headers=current_app.config["auth_header"],
-                    json={},
-                )
+                if is_user_allowed_register(event["sender"]):
+                    # Accept invite / join room
+                    r = requests.post(
+                        current_app.config["homeserver"]
+                        + f"/_matrix/client/r0/rooms/{room_id}/join",
+                        headers=current_app.config["auth_header"],
+                        json={},
+                    )
+                else:
+                    # reject invite
+                    r = requests.post(
+                        current_app.config["homeserver"]
+                        + f"/_matrix/client/r0/rooms/{room_id}/leave",
+                        headers=current_app.config["auth_header"],
+                        json={}
+                    )
+                
             elif event["content"]["membership"] == "ban":
                 alias = canonical_room_alias(event['room_id'])
                 if not alias:
