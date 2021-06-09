@@ -9,7 +9,7 @@ from app import create_app_from_env
 
 
 @pytest.fixture
-def registered_sitename():
+def sitename():
     """ Register `sitename` as user "dev1". """
     sitename = str(uuid.uuid4())
     homeserver_url = os.environ["CACTUS_HOMESERVER_URL"]
@@ -91,7 +91,7 @@ def registered_sitename():
     expected_body = f"Created site {sitename} for you 🚀"
     assert msg_body == expected_body
 
-    return (access_token, sitename)
+    return sitename
 
 
 @pytest.fixture
@@ -112,8 +112,7 @@ def appservice():
         yield c
 
 
-def test_query_room_alias_200(appservice, registered_sitename):
-    _, sitename = registered_sitename
+def test_query_room_alias_200(appservice, sitename):
     r = appservice.authorized_request(
         f"/_matrix/app/v1/rooms/%23comments_{sitename}_there:localhost:8008"
     )
@@ -121,25 +120,25 @@ def test_query_room_alias_200(appservice, registered_sitename):
     assert r.get_json() == {}
 
 
-def test_query_room_alias_slashed(appservice):
+def test_query_room_alias_slashed(appservice, sitename):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_hi_t/here:servername"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}_t/here:localhost:8008"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
 
 
-def test_query_room_alias_servername_with_underscore(appservice):
+def test_query_room_alias_servername_with_underscore(appservice, sitename):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_hi_there:server_name"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}_there:localhost:8008"
     )
     assert r.status_code == 200
     assert r.get_json() == {}
 
 
-def test_query_room_alias_too_few_underscores(appservice):
+def test_query_room_alias_too_few_underscores(appservice, sitename):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_hithere:servername"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}there:localhost:8008"
     )
     assert r.status_code == 404
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
@@ -147,21 +146,21 @@ def test_query_room_alias_too_few_underscores(appservice):
 
 def test_query_room_alias_too_many_underscores(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_hi_there_friend:servername"
+        "/_matrix/app/v1/rooms/%23comments_hi_there_friend:localhost:8008"
     )
     assert r.status_code == 404
     assert r.get_json() == {"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND"}
 
 
-def test_query_room_alias_already_exists(appservice):
+def test_query_room_alias_already_exists(appservice, sitename):
     # Make sure that we can join rooms that already exists
     r1 = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_blog_post0:servername"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}_post0:localhost:8008"
     )
     assert r1.status_code == 200
     assert r1.get_json() == {}
     r2 = appservice.authorized_request(
-        "/_matrix/app/v1/rooms/%23comments_blog_post0:servername"
+        f"/_matrix/app/v1/rooms/%23comments_{sitename}_post0:localhost:8008"
     )
     assert r2.status_code == 200
     assert r2.get_json() == {}
