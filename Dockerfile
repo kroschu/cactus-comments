@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.9.5-buster
 
 # Force the stdout and stderr streams from python to be unbuffered.
 ENV PYTHONUNBUFFERED=1
