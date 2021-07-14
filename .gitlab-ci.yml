@@ -49,6 +49,24 @@ Lint shell scripts:
     - fd --extension sh --exec shellcheck
 
 
+Lint Python:
+  <<: *lint-default
+  image: python:3.9.5
+  before_script:
+    - pip install black flake8 flake8-bugbear flake8-cognitive-complexity flake8-expression-complexity
+  script:
+    - black --check .
+    - flake8 --version
+    - flake8 --max-line-length 107
+             --statistics
+             --max-cognitive-complexity 10
+             --max-expression-complexity 10
+             --max-complexity 10
+             --ignore E203,W503  # for ``black`` compatibility
+             # It is ok to increment the max-complexity. It's just nice to know
+             # when / what requires the increment
+
+
 Build:
   stage: build
   needs: []
