@@ -543,7 +543,7 @@ def query_room_alias(alias: str):
             jsonify(
                 {
                     "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-                    "error": "Unknown error. Error from homeserver: {homeserver_err_msg}.",
+                    "error": f"Unknown error. Error from homeserver: {homeserver_err_msg}.",
                 }
             ),
             404,
