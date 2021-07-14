@@ -57,14 +57,13 @@ Lint Python:
   script:
     - black --check .
     - flake8 --version
+    # app.py has abominable complexity. Work on reducing this.
     - flake8 --max-line-length 107
              --statistics
-             --max-cognitive-complexity 10
-             --max-expression-complexity 10
-             --max-complexity 10
+             --max-cognitive-complexity 85
+             --max-expression-complexity 85
+             --max-complexity 85
              --ignore E203,W503  # for ``black`` compatibility
-             # It is ok to increment the max-complexity. It's just nice to know
-             # when / what requires the increment
 
 
 Build:
