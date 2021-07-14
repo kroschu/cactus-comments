@@ -217,7 +217,7 @@ def make_sure_user_is_registered():
 
         # Register user
         r = requests.post(
-            current_app.config["homeserver"] + f"/_matrix/client/r0/register",
+            current_app.config["homeserver"] + "/_matrix/client/r0/register",
             json={
                 "username": localpart_from_user_id(user_id),
                 "type": "m.login.application_service",
