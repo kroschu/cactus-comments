@@ -83,6 +83,9 @@ Build:
 .release-default: &release-default
   stage: release
   needs:
+    - Lint Dockerfiles
+    - Lint shell scripts
+    - Lint Python
     - Build
   image: alpine
   variables:
