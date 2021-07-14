@@ -1,7 +1,6 @@
 import os
 import pytest
 import random
-import urllib
 import requests
 import uuid
 
