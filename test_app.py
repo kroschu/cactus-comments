@@ -75,11 +75,9 @@ def sitename():
         r = requests.get(url, headers=headers)
         assert r.status_code == 200
         events = r.json()["rooms"]["join"][room_id]["timeline"]["events"]
-        cactusbot_messages += [
-            e
-            for e in events
-            if e["sender"] == cactusbot_userid and e["type"] == "m.room.message"
-        ]
+        for e in events:
+            if e["sender"] == cactusbot_userid and e["type"] == "m.room.message":
+                cactusbot_messages.append(e)
     assert len(cactusbot_messages) == 1
     msg_body = cactusbot_messages[0]["content"]["body"]
     expected_body = f"Created site {sitename} for you 🚀"
