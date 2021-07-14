@@ -40,6 +40,15 @@ Lint Dockerfiles:
     - fd Dockerfile --exec hadolint
 
 
+Lint shell scripts:
+  <<: *lint-default
+  image: koalaman/shellcheck-alpine:latest
+  before_script:
+    - apk add fd
+  script:
+    - fd --extension sh --exec shellcheck
+
+
 Build:
   stage: build
   needs: []
