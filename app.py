@@ -367,6 +367,10 @@ def new_transaction(txn_id: str):
                 # Only react to "help" and "register <sitename>" messages
                 continue
 
+            # Only interact with anyone in the `CACTUS_REGISTRATION_REGEX`
+            if not is_user_allowed_register(event["sender"]):
+                continue
+
             # Make sure we don't respond to comments
             alias = canonical_room_alias(room_id)
             if alias:
