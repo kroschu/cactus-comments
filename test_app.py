@@ -10,7 +10,7 @@ from app import create_app_from_env
 
 @pytest.fixture
 def sitename():
-    """ Register `sitename` as user "dev1". """
+    """Register `sitename` as user "dev1"."""
     sitename = str(uuid.uuid4())
     homeserver_url = os.environ["CACTUS_HOMESERVER_URL"]
     userid, password = "@dev1:localhost:8008", "dev1"
@@ -20,12 +20,9 @@ def sitename():
         f"{homeserver_url}/_matrix/client/r0/login",
         json={
             "type": "m.login.password",
-            "identifier": {
-              "type": "m.id.user",
-              "user": userid
-            },
-            "password": password
-        }
+            "identifier": {"type": "m.id.user", "user": userid},
+            "password": password,
+        },
     )
     assert r.status_code == 200, f"Login as {userid} failed: {r.status_code}"
     access_token = r.json()["access_token"]
@@ -36,7 +33,7 @@ def sitename():
     r = requests.post(
         f"{homeserver_url}/_matrix/client/r0/createRoom",
         json={"preset": "private_chat"},
-        headers=headers
+        headers=headers,
     )
     assert r.status_code == 200
     room_id = r.json()["room_id"]
@@ -45,8 +42,8 @@ def sitename():
     cactusbot_userid = f"@cactusbot:{server_name}"
     r = requests.post(
         f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/invite",
-        json={ "user_id": cactusbot_userid },
-        headers=headers
+        json={"user_id": cactusbot_userid},
+        headers=headers,
     )
     errmsg = f"Error inviting {cactusbot_userid}: {r.json()}"
     assert r.status_code == 200, errmsg
@@ -56,7 +53,7 @@ def sitename():
     while not joined:
         r = requests.get(
             f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/state/m.room.member/{cactusbot_userid}",
-            headers=headers
+            headers=headers,
         )
         assert r.status_code == 200
         joined = r.json()["membership"] == "join"
@@ -64,11 +61,8 @@ def sitename():
     # send "register" message
     r = requests.put(
         f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{random.random()}",
-        json={
-            "msgtype": "m.text",
-            "body": f"register {sitename}"
-        },
-        headers=headers
+        json={"msgtype": "m.text", "body": f"register {sitename}"},
+        headers=headers,
     )
     assert r.status_code == 200, f"Failed sending message: {r.json()}"
 
@@ -83,7 +77,8 @@ def sitename():
         assert r.status_code == 200
         events = r.json()["rooms"]["join"][room_id]["timeline"]["events"]
         cactusbot_messages += [
-            e for e in events
+            e
+            for e in events
             if e["sender"] == cactusbot_userid and e["type"] == "m.room.message"
         ]
     assert len(cactusbot_messages) == 1
@@ -168,7 +163,9 @@ def test_query_room_alias_already_exists(appservice, sitename):
 
 def test_push_api_empty_success(appservice):
     r = appservice.authorized_request(
-        "/_matrix/app/v1/transactions/42", method="PUT", json={"events": []},
+        "/_matrix/app/v1/transactions/42",
+        method="PUT",
+        json={"events": []},
     )
     assert r.status_code == 200
     assert r.get_json() == {}

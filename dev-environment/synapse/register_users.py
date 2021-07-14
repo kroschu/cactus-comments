@@ -3,9 +3,9 @@ import time
 
 
 def register(username):
-    """ Ensure that `username` is registered.
-        Terminates on successful register, or if user is already registered.
-        Retries on connection error. Useful while synapse is starting.
+    """Ensure that `username` is registered.
+    Terminates on successful register, or if user is already registered.
+    Retries on connection error. Useful while synapse is starting.
     """
     print(f"🔧 Registering user: {username}")
     while True:
@@ -15,8 +15,8 @@ def register(username):
                 json={
                     "auth": {"type": "m.login.dummy"},
                     "username": username,
-                    "password": username
-                }
+                    "password": username,
+                },
             )
             if r.status_code == 200:
                 print(f"🔧 Successfully registered user: {username}")

@@ -45,7 +45,15 @@ comment sections 👮‍♀️👮‍♂️
 """
 
 
-def create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix, register_user_regex):
+def create_app(
+    hs_token,
+    as_token,
+    homeserver,
+    user_id,
+    namespace_regex,
+    namespace_prefix,
+    register_user_regex,
+):
     app = Flask(__name__)
     app.register_blueprint(appservice_bp)
 
@@ -85,7 +93,10 @@ def create_app_from_env():
 
     homeserver = homeserver.removesuffix("/")
     if not (homeserver.startswith("http://") or homeserver.startswith("https://")):
-        print("Homeserver url missing http/s scheme (CACTUS_HOMESERVER_URL).", file=sys.stderr)
+        print(
+            "Homeserver url missing http/s scheme (CACTUS_HOMESERVER_URL).",
+            file=sys.stderr,
+        )
         sys.exit(CONFIG_ERROR_EXITCODE)
 
     if namespace_regex is None:
@@ -93,14 +104,24 @@ def create_app_from_env():
         sys.exit(CONFIG_ERROR_EXITCODE)
 
     if namespace_prefix is None:
-        print("No namespace prefix provided (CACTUS_NAMESPACE_PREFIX).", file=sys.stderr)
+        print(
+            "No namespace prefix provided (CACTUS_NAMESPACE_PREFIX).", file=sys.stderr
+        )
         sys.exit(CONFIG_ERROR_EXITCODE)
 
     if not namespace_regex[1:].startswith(namespace_prefix):
         print("Namespace regex should start with the namespace prefix")
         sys.exit(CONFIG_ERROR_EXITCODE)
 
-    return create_app(hs_token, as_token, homeserver, user_id, namespace_regex, namespace_prefix, register_user_regex)
+    return create_app(
+        hs_token,
+        as_token,
+        homeserver,
+        user_id,
+        namespace_regex,
+        namespace_prefix,
+        register_user_regex,
+    )
 
 
 def send_plaintext_msg(room_id, msg):
@@ -127,11 +148,11 @@ def alias_to_mod_room_id(alias):
 
 @lru_cache(maxsize=10000)
 def canonical_room_alias(room_id):
-    """Get the canonical room alias (or None) from a room id. """
+    """Get the canonical room alias (or None) from a room id."""
     r = requests.get(
         current_app.config["homeserver"]
         + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.canonical_alias",
-        headers=current_app.config["auth_header"]
+        headers=current_app.config["auth_header"],
     )
     if not r.ok or "alias" not in r.json():
         return None
@@ -180,8 +201,10 @@ def localpart_from_user_id(user_id):
     # https://matrix.org/docs/spec/appendices#user-identifiers
     return re.match(r"^@([a-zA-Z0-9._=/-]+):", user_id).group(1)
 
+
 def is_user_allowed_register(user_id):
     return re.match(current_app.config["register_user_regex"], user_id) is not None
+
 
 def make_sure_user_is_registered():
     # Apparently, there are no `before_first_request` on blueprints. Therefore,
@@ -259,11 +282,11 @@ def new_transaction(txn_id: str):
                         current_app.config["homeserver"]
                         + f"/_matrix/client/r0/rooms/{room_id}/leave",
                         headers=current_app.config["auth_header"],
-                        json={}
+                        json={},
                     )
-                
+
             elif event["content"]["membership"] == "ban":
-                alias = canonical_room_alias(event['room_id'])
+                alias = canonical_room_alias(event["room_id"])
                 if not alias:
                     continue
                 if is_comment_section_room(alias):
@@ -296,7 +319,9 @@ def new_transaction(txn_id: str):
                             continue
                         room_alias_localpart = room_alias.split(":")[0]
                         mod_alias_localpart = mod_alias.split(":")[0]
-                        if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
+                        if room_alias != mod_alias and room_alias_localpart.startswith(
+                            mod_alias_localpart
+                        ):
                             user_to_ban = event["state_key"]
                             requests.post(
                                 current_app.config["homeserver"]
@@ -306,7 +331,7 @@ def new_transaction(txn_id: str):
                             )
 
         elif event["type"] == "m.room.power_levels":
-            mod_alias = canonical_room_alias(event['room_id'])
+            mod_alias = canonical_room_alias(event["room_id"])
             if not mod_alias:
                 continue
             if is_moderation_room(mod_alias):
@@ -324,7 +349,9 @@ def new_transaction(txn_id: str):
                         continue
                     room_alias_localpart = room_alias.split(":")[0]
                     mod_alias_localpart = mod_alias.split(":")[0]
-                    if room_alias != mod_alias and room_alias_localpart.startswith(mod_alias_localpart):
+                    if room_alias != mod_alias and room_alias_localpart.startswith(
+                        mod_alias_localpart
+                    ):
                         requests.put(
                             current_app.config["homeserver"]
                             + f"/_matrix/client/r0/rooms/{room_id}/state/m.room.power_levels",
@@ -438,14 +465,26 @@ def query_room_alias(alias: str):
     make_sure_user_is_registered()
 
     if not is_comment_section_room(alias):
-        return jsonify({
-            "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-        }), 404
+        return (
+            jsonify(
+                {
+                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
+                }
+            ),
+            404,
+        )
 
     r_mod_id = alias_to_mod_room_id(alias)
     if not r_mod_id.ok:
         # Site does not exist.
-        return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",}), 404
+        return (
+            jsonify(
+                {
+                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
+                }
+            ),
+            404,
+        )
     mod_room_id = r_mod_id.json()["room_id"]
 
     # Get power levels from moderation room
@@ -460,7 +499,7 @@ def query_room_alias(alias: str):
     _last_underscore = alias_localpart.rindex("_")
     _sitename_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
     sitename = alias_localpart[_sitename_start_index:_last_underscore]
-    comment_section_id = alias_localpart[_last_underscore + 1:]
+    comment_section_id = alias_localpart[_last_underscore + 1 :]
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
@@ -500,10 +539,15 @@ def query_room_alias(alias: str):
         # a room in an invalid state, or the room version is unsupported by the
         # homeserver. Regardless, the room does not exist.
         homeserver_err_msg = r.json().get("error", "no error message")
-        return jsonify({
-            "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-            "error": "Unknown error. Error from homeserver: {homeserver_err_msg}.",
-        }), 404
+        return (
+            jsonify(
+                {
+                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
+                    "error": "Unknown error. Error from homeserver: {homeserver_err_msg}.",
+                }
+            ),
+            404,
+        )
 
     # Get banned users from moderation room
     r_banned_users = requests.get(
