@@ -13,8 +13,31 @@ variables:
 
 
 stages:
+  - lint
   - build
   - release
+
+
+.lint-default: &lint-default
+  stage: lint
+  needs: []
+  services: []
+  tags:
+    - docker
+
+
+Lint Dockerfiles:
+  <<: *lint-default
+  image: hadolint/hadolint:latest-alpine
+  before_script:
+    - apk add fd
+  script:
+    - echo "Running Hadolint, a Dockerfile linter"
+    - echo "For more information about reported errors, visit the Hadolint wiki on https://github.com/hadolint/hadolint/wiki"
+    # Run fd without exec arg to produce a list of files to be linted
+    - fd Dockerfile
+    # Run hadolint on every Dockerfile
+    - fd Dockerfile --exec hadolint
 
 
 Build:
