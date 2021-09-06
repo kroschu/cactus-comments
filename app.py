@@ -466,8 +466,8 @@ def query_room_alias(alias: str):
     """Implement the Room Alias Query API from the appservice specification.
 
     The homeserver hits this endpoint to see if a room alias exists. We are
-    only queried for rooms in our alias namespace. In our namespace, all rooms
-    exist. Therefore, we MUST create the room before responding.
+    only queried for rooms in our alias namespace. Therefore, we MUST create
+    *comment section* rooms (for registered sites) before responding.
 
     Reference: https://matrix.org/docs/spec/application_service/r0.1.2#get-matrix-app-v1-rooms-roomalias
     """
@@ -481,6 +481,9 @@ def query_room_alias(alias: str):
     if not r_mod_id.ok:
         # Site does not exist.
         return matrix_error("CHAT.CACTUS.APPSERVICE_NOT_FOUND", 404)
+
+    # Now we know that this is a query for a valid comment section room. We
+    # must create it, if it does not exist.
 
     mod_room_id = r_mod_id.json()["room_id"]
 
