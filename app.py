@@ -213,6 +213,19 @@ def localpart_from_alias(alias):
     return alias.split(":")[0]
 
 
+def sitename_from_localpart(alias_localpart):
+    """Return the sitename of the localpart of an alias."""
+    last_underscore = alias_localpart.rindex("_")
+    sitename_start_index = alias_localpart.rindex("_", 0, last_underscore) + 1
+    return alias_localpart[sitename_start_index:last_underscore]
+
+
+def comment_section_id_from_localpart(alias_localpart):
+    """Return the comment section id of the localpart of an alias."""
+    last_underscore = alias_localpart.rindex("_")
+    return alias_localpart[last_underscore + 1 :]
+
+
 def is_user_allowed_register(user_id):
     return re.match(current_app.config["register_user_regex"], user_id) is not None
 
@@ -501,10 +514,8 @@ def query_room_alias(alias: str):
 
     # Create room
     alias_localpart = localpart_from_alias(alias)
-    _last_underscore = alias_localpart.rindex("_")
-    _sitename_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
-    sitename = alias_localpart[_sitename_start_index:_last_underscore]
-    comment_section_id = alias_localpart[_last_underscore + 1 :]
+    sitename = sitename_from_localpart(alias_localpart)
+    comment_section_id = comment_section_id_from_localpart(alias_localpart)
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
