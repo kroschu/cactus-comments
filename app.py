@@ -208,6 +208,11 @@ def localpart_from_user_id(user_id):
     return re.match(r"^@([a-zA-Z0-9._=/-]+):", user_id).group(1)
 
 
+def localpart_from_alias(alias):
+    """Return the localpart of a room alias."""
+    return alias.split(":")[0]
+
+
 def is_user_allowed_register(user_id):
     return re.match(current_app.config["register_user_regex"], user_id) is not None
 
@@ -323,8 +328,8 @@ def new_transaction(txn_id: str):
                         room_alias = canonical_room_alias(room_id)
                         if not room_alias:
                             continue
-                        room_alias_localpart = room_alias.split(":")[0]
-                        mod_alias_localpart = mod_alias.split(":")[0]
+                        room_alias_localpart = localpart_from_alias(room_alias)
+                        mod_alias_localpart = localpart_from_alias(mod_alias)
                         if room_alias != mod_alias and room_alias_localpart.startswith(
                             mod_alias_localpart
                         ):
@@ -353,8 +358,8 @@ def new_transaction(txn_id: str):
                     room_alias = canonical_room_alias(room_id)
                     if not room_alias:
                         continue
-                    room_alias_localpart = room_alias.split(":")[0]
-                    mod_alias_localpart = mod_alias.split(":")[0]
+                    room_alias_localpart = localpart_from_alias(room_alias)
+                    mod_alias_localpart = localpart_from_alias(mod_alias)
                     if room_alias != mod_alias and room_alias_localpart.startswith(
                         mod_alias_localpart
                     ):
@@ -495,7 +500,7 @@ def query_room_alias(alias: str):
     )
 
     # Create room
-    alias_localpart = alias.split(":")[0][1:]
+    alias_localpart = localpart_from_alias(alias)
     _last_underscore = alias_localpart.rindex("_")
     _sitename_start_index = alias_localpart.rindex("_", 0, _last_underscore) + 1
     sitename = alias_localpart[_sitename_start_index:_last_underscore]
@@ -506,7 +511,7 @@ def query_room_alias(alias: str):
         json={
             "visibility": "private",
             "name": f"{sitename} comment section ({comment_section_id})",
-            "room_alias_name": alias_localpart,
+            "room_alias_name": alias_localpart[1:],  # strip leading hashtag
             "creation_content": {"m.federate": True},
             "initial_state": [
                 # Make the room public to whoever knows the link.
