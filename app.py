@@ -124,6 +124,12 @@ def create_app_from_env():
     )
 
 
+def matrix_error(error_code, http_code, error_msg=None):
+    if error_msg is None:
+        return jsonify({"errcode": error_code}), http_code
+    return jsonify({"errcode": error_code, "error": error_msg}), http_code
+
+
 def send_plaintext_msg(room_id, msg):
     txn_id = random.randint(0, 1_000_000_000)
     return requests.put(
@@ -189,9 +195,9 @@ def authorization_required(f):
         token = request.args.get("access_token", False)
         hs_token = current_app.config["hs_token"]
         if not token:
-            return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_UNAUTHORIZED"}), 401
+            return matrix_error("CHAT.CACTUS.APPSERVICE_UNAUTHORIZED", 401)
         if token != hs_token:
-            return jsonify({"errcode": "CHAT.CACTUS.APPSERVICE_FORBIDDEN"}), 403
+            return matrix_error("CHAT.CACTUS.APPSERVICE_FORBIDDEN", 403)
         return f(*args, **kwargs)
 
     return inner
@@ -469,26 +475,13 @@ def query_room_alias(alias: str):
     make_sure_user_is_registered()
 
     if not is_comment_section_room(alias):
-        return (
-            jsonify(
-                {
-                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-                }
-            ),
-            404,
-        )
+        return matrix_error("CHAT.CACTUS.APPSERVICE_NOT_FOUND", 404)
 
     r_mod_id = alias_to_mod_room_id(alias)
     if not r_mod_id.ok:
         # Site does not exist.
-        return (
-            jsonify(
-                {
-                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-                }
-            ),
-            404,
-        )
+        return matrix_error("CHAT.CACTUS.APPSERVICE_NOT_FOUND", 404)
+
     mod_room_id = r_mod_id.json()["room_id"]
 
     # Get power levels from moderation room
@@ -543,14 +536,10 @@ def query_room_alias(alias: str):
         # a room in an invalid state, or the room version is unsupported by the
         # homeserver. Regardless, the room does not exist.
         homeserver_err_msg = r.json().get("error", "no error message")
-        return (
-            jsonify(
-                {
-                    "errcode": "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
-                    "error": f"Unknown error. Error from homeserver: {homeserver_err_msg}.",
-                }
-            ),
+        return matrix_error(
+            "CHAT.CACTUS.APPSERVICE_NOT_FOUND",
             404,
+            f"Unknown error. Error from homeserver: {homeserver_err_msg}.",
         )
 
     # Get banned users from moderation room
