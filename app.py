@@ -67,6 +67,8 @@ def create_app(
 
     app.config["auth_header"] = {"Authorization": f"Bearer {as_token}"}
 
+    app.logger.info("Created application!")
+
     return app
 
 
@@ -126,7 +128,9 @@ def create_app_from_env():
 
 def matrix_error(error_code, http_code, error_msg=None):
     if error_msg is None:
+        current_app.logger.info("%s %s", http_code, error_code)
         return jsonify({"errcode": error_code}), http_code
+    current_app.logger.info("%s %s: %s", http_code, error_code, error_msg)
     return jsonify({"errcode": error_code, "error": error_msg}), http_code
 
 
@@ -293,6 +297,11 @@ def new_transaction(txn_id: str):
             is_for_me = event["state_key"] == current_app.config["user_id"]
             if is_invite and is_for_me:
                 if is_user_allowed_register(event["sender"]):
+                    current_app.logger.info(
+                        "Accepting invite    room_id=%r sender=%r",
+                        room_id,
+                        event["sender"],
+                    )
                     # Accept invite / join room
                     r = requests.post(
                         current_app.config["homeserver"]
@@ -301,7 +310,12 @@ def new_transaction(txn_id: str):
                         json={},
                     )
                 else:
-                    # reject invite
+                    current_app.logger.info(
+                        "Rejecting invite    room_id=%r sender=%r",
+                        room_id,
+                        event["sender"],
+                    )
+                    # Reject invite
                     r = requests.post(
                         current_app.config["homeserver"]
                         + f"/_matrix/client/r0/rooms/{room_id}/leave",
@@ -332,6 +346,12 @@ def new_transaction(txn_id: str):
                     # implementation architecture does not scale.. :-)
 
                     mod_alias = alias  # for readability below
+                    user_to_ban = event["state_key"]
+                    current_app.logger.info(
+                        "Ban in mod room, replicating    room=%r user_to_ban=%r",
+                        mod_alias,
+                        user_to_ban,
+                    )
                     joined_rooms = requests.get(
                         current_app.config["homeserver"]
                         + "/_matrix/client/r0/joined_rooms",
@@ -346,7 +366,6 @@ def new_transaction(txn_id: str):
                         if room_alias != mod_alias and room_alias_localpart.startswith(
                             mod_alias_localpart
                         ):
-                            user_to_ban = event["state_key"]
                             requests.post(
                                 current_app.config["homeserver"]
                                 + f"/_matrix/client/r0/rooms/{room_id}/ban",
@@ -359,6 +378,9 @@ def new_transaction(txn_id: str):
             if not mod_alias:
                 continue
             if is_moderation_room(mod_alias):
+                current_app.logger.info(
+                    "Power level changed, replicating    room=%r", mod_alias
+                )
                 # When power_levels are changed in the moderation room, we want
                 # to replicate it to all rooms for the site
                 power_levels = event["content"]
@@ -467,9 +489,17 @@ def new_transaction(txn_id: str):
                     continue
                 else:
                     error_msg = rjson.get("error", "no error message")
+                    current_app.logger.warning(
+                        "Failed to create site with unknown error    error=%r",
+                        error_msg,
+                    )
                     msg = f"Unknown error. Error from homeserver: {error_msg}."
                     send_plaintext_msg(room_id, msg)
                     continue
+
+            current_app.logger.info(
+                "Created site    name=%r owner=%r", sitename, event["sender"]
+            )
 
             send_plaintext_msg(room_id, f"Created site {sitename} for you 🚀")
             send_plaintext_msg(rjson["room_id"], MODERATION_EXPLANATION)
