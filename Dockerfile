@@ -11,4 +11,4 @@ WORKDIR /code
 COPY test_app.py .
 COPY app.py .
 
-CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5000", "--timeout", "500", "app:create_app_from_env()"]
+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "--timeout", "500", "app:create_app_from_env()"]
