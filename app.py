@@ -1,4 +1,5 @@
 from functools import lru_cache, wraps
+import logging
 import os
 import random
 import re
@@ -56,6 +57,7 @@ def create_app(
 ):
     app = Flask(__name__)
     app.register_blueprint(appservice_bp)
+    app.logger.setLevel(logging.INFO)
 
     app.config["hs_token"] = hs_token
     app.config["as_token"] = as_token
