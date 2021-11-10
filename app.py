@@ -158,7 +158,7 @@ def alias_to_mod_room_id(alias):
     )
 
 
-@lru_cache(maxsize=10000)
+@lru_cache(maxsize=None)
 def canonical_room_alias(room_id):
     """Get the canonical room alias (or None) from a room id."""
     r = requests.get(
