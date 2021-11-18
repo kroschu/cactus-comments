@@ -95,7 +95,7 @@ def create_app_from_env():
         print("No homeserver url provided (CACTUS_HOMESERVER_URL).", file=sys.stderr)
         sys.exit(CONFIG_ERROR_EXITCODE)
 
-    homeserver = homeserver.removesuffix("/")
+    homeserver = homeserver.strip("/")
     if not (homeserver.startswith("http://") or homeserver.startswith("https://")):
         print(
             "Homeserver url missing http/s scheme (CACTUS_HOMESERVER_URL).",
