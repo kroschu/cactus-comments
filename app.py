@@ -543,11 +543,15 @@ def query_room_alias(alias: str):
         + f"/_matrix/client/r0/rooms/{mod_room_id}/state/m.room.power_levels",
         headers=current_app.config["auth_header"],
     )
+    r_power_level_json = r_power_level.json()
 
     # Create room
     alias_localpart = localpart_from_alias(alias)
     sitename = sitename_from_localpart(alias_localpart)
     comment_section_id = comment_section_id_from_localpart(alias_localpart)
+    to_invite = r_power_level_json["users"].keys() - {
+        current_app.config["user_id"],
+    }
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
@@ -555,6 +559,7 @@ def query_room_alias(alias: str):
             "visibility": "private",
             "name": f"{sitename} comment section ({comment_section_id})",
             "room_alias_name": alias_localpart[1:],  # strip leading hashtag
+            "invite": to_invite,
             "creation_content": {"m.federate": True},
             "initial_state": [
                 # Make the room public to whoever knows the link.
@@ -574,7 +579,7 @@ def query_room_alias(alias: str):
                 },
             ],
             # Replicate power level from site moderation room
-            "power_level_content_override": r_power_level.json(),
+            "power_level_content_override": r_power_level_json,
         },
     )
 
