@@ -216,22 +216,20 @@ def test_unauthorized_push_api_call_empty_token(appservice):
 
 
 def test_auto_invite(homeserver_url, appservice, sitename, dev1, dev2):
-    """ When the appservice creates a new room,
-        the mod room participants are invited to it """
+    """When the appservice creates a new room,
+    the mod room participants are invited to it"""
 
     # get the appservice to make a new room
     random_id = str(uuid.uuid4())[:8]
     encoded_alias = f"%23comments_{sitename}_{random_id}%3Alocalhost%3A8008"
-    r = appservice.authorized_request(
-        f"/_matrix/app/v1/rooms/{encoded_alias}"
-    )
+    r = appservice.authorized_request(f"/_matrix/app/v1/rooms/{encoded_alias}")
     assert r.status_code == 200
     assert r.get_json() == {}
 
     # first, join as dev2...
     r = requests.post(
         f"{homeserver_url}/_matrix/client/v3/join/{encoded_alias}",
-        headers={"Authorization": f"Bearer {dev2}"}
+        headers={"Authorization": f"Bearer {dev2}"},
     )
     assert r.status_code == 200
     room_id = r.json()["room_id"]
@@ -239,7 +237,7 @@ def test_auto_invite(homeserver_url, appservice, sitename, dev1, dev2):
     # ...then get the membership state event for dev1
     r = requests.get(
         f"{homeserver_url}/_matrix/client/v3/rooms/{room_id}/state/m.room.member/%40dev1%3Alocalhost%3A8008",
-        headers={"Authorization": f"Bearer {dev2}"}
+        headers={"Authorization": f"Bearer {dev2}"},
     )
     assert r.status_code == 200, r.json()
     assert r.json()["membership"] == "invite", "dev1 was not invited"

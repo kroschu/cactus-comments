@@ -549,9 +549,12 @@ def query_room_alias(alias: str):
     alias_localpart = localpart_from_alias(alias)
     sitename = sitename_from_localpart(alias_localpart)
     comment_section_id = comment_section_id_from_localpart(alias_localpart)
-    to_invite = list(r_power_level_json["users"].keys() - {
-        current_app.config["user_id"],
-    })
+    to_invite = list(
+        r_power_level_json["users"].keys()
+        - {
+            current_app.config["user_id"],
+        }
+    )
     r = requests.post(
         current_app.config["homeserver"] + "/_matrix/client/r0/createRoom",
         headers=current_app.config["auth_header"],
