@@ -26,8 +26,6 @@ def sign_in(homeserver_url, username):
     )
     assert r.status_code == 200, f"Login as {userid} failed: {r.status_code}"
     access_token = r.json()["access_token"]
-    server_name = r.json()["home_server"]
-    headers = {"Authorization": f"Bearer {access_token}"}
     return access_token
 
 
@@ -45,14 +43,12 @@ def dev2(homeserver_url):
 def sitename(homeserver_url, dev1):
     """Register `sitename` as user "dev1"."""
     sitename = str(uuid.uuid4())
-    server_name = "localhost:8008"
-    userid, password = "@dev1:localhost:8008", "dev1"
-    access_token = dev1
-    headers = {"Authorization": f"Bearer {access_token}"}
+    headers = {"Authorization": f"Bearer {dev1}"}
+    cs_url = f"{homeserver_url}/_matrix/client/r0"
 
     # create a new room
     r = requests.post(
-        f"{homeserver_url}/_matrix/client/r0/createRoom",
+        f"{cs_url}/createRoom",
         json={"preset": "private_chat"},
         headers=headers,
     )
@@ -60,9 +56,9 @@ def sitename(homeserver_url, dev1):
     room_id = r.json()["room_id"]
 
     # invite cactusbot to the room
-    cactusbot_userid = f"@cactusbot:{server_name}"
+    cactusbot_userid = "@cactusbot:localhost:8008"
     r = requests.post(
-        f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/invite",
+        f"{cs_url}/rooms/{room_id}/invite",
         json={"user_id": cactusbot_userid},
         headers=headers,
     )
@@ -73,7 +69,7 @@ def sitename(homeserver_url, dev1):
     joined = False
     while not joined:
         r = requests.get(
-            f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/state/m.room.member/{cactusbot_userid}",
+            f"{cs_url}/rooms/{room_id}/state/m.room.member/{cactusbot_userid}",
             headers=headers,
         )
         assert r.status_code == 200
@@ -81,7 +77,7 @@ def sitename(homeserver_url, dev1):
 
     # send "register" message
     r = requests.put(
-        f"{homeserver_url}/_matrix/client/r0/rooms/{room_id}/send/m.room.message/{random.random()}",
+        f"{cs_url}/rooms/{room_id}/send/m.room.message/{random.random()}",
         json={"msgtype": "m.text", "body": f"register {sitename}"},
         headers=headers,
     )
@@ -91,7 +87,7 @@ def sitename(homeserver_url, dev1):
     cactusbot_messages = []
     next_batch = None
     while not cactusbot_messages:
-        url = f"{homeserver_url}/_matrix/client/r0/sync"
+        url = f"{cs_url}/sync"
         if isinstance(next_batch, str):
             url = f"{url}?since={next_batch}"
         r = requests.get(url, headers=headers)
@@ -227,16 +223,18 @@ def test_auto_invite(homeserver_url, appservice, sitename, dev1, dev2):
     assert r.get_json() == {}
 
     # first, join as dev2...
+    cs_url = f"{homeserver_url}/_matrix/client/v3"
     r = requests.post(
-        f"{homeserver_url}/_matrix/client/v3/join/{encoded_alias}",
+        f"{cs_url}/join/{encoded_alias}",
         headers={"Authorization": f"Bearer {dev2}"},
     )
     assert r.status_code == 200
     room_id = r.json()["room_id"]
 
     # ...then get the membership state event for dev1
+    encoded_userid = "%40dev1%3Alocalhost%3A8008"
     r = requests.get(
-        f"{homeserver_url}/_matrix/client/v3/rooms/{room_id}/state/m.room.member/%40dev1%3Alocalhost%3A8008",
+        f"{cs_url}/rooms/{room_id}/state/m.room.member/{encoded_userid}",
         headers={"Authorization": f"Bearer {dev2}"},
     )
     assert r.status_code == 200, r.json()
