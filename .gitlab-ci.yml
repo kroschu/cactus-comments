@@ -14,6 +14,7 @@ variables:
 
 stages:
   - lint
+  - test
   - build
   - release
 
@@ -64,6 +65,16 @@ Lint Python:
              --max-expression-complexity 85
              --max-complexity 85
              --ignore E203,W503  # for ``black`` compatibility
+
+
+Run Tests:
+  stage: test
+  image: docker/compose:latest
+  services:
+    - docker:dind
+  script:
+    - docker-compose up -d --build
+    - docker-compose run app pytest
 
 
 Build:
