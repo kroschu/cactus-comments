@@ -74,7 +74,12 @@ Run Tests:
     - docker:dind
   script:
     - docker-compose up -d --build
-    - docker-compose run app pytest
+    - docker-compose run app pytest --junit-xml=./report.xml
+  artifacts:
+    paths:
+      - report.xml
+    reports:
+      junit: report.xml
 
 
 Build:
