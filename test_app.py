@@ -3,8 +3,37 @@ import pytest
 import random
 import requests
 import uuid
+import time
 
 from app import create_app_from_env
+
+
+# this decorator makes it run once at startup
+@pytest.fixture(scope="session", autouse=True)
+def wait_for_synapse():
+    """Wait for `dev3` to be registered"""
+    while True:
+        print("Waiting for synapse to be ready...")
+        try:
+            # dev3 is the last user to be registered
+            userid, password = "@dev3:localhost:8008", "dev3"
+            url = f"{os.environ['CACTUS_HOMESERVER_URL']}/_matrix/client/r0/login"
+            print(url)
+            r = requests.post(
+                url,
+                json={
+                    "type": "m.login.password",
+                    "identifier": {"type": "m.id.user", "user": userid},
+                    "password": password,
+                },
+            )
+            if not r.ok:
+                print(r.content)
+                continue
+            break
+        except requests.exceptions.ConnectionError:
+            time.sleep(0.2)
+            continue
 
 
 @pytest.fixture
