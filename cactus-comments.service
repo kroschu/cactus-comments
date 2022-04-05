@@ -14,7 +14,7 @@ WorkingDirectory=<path-to-cloned-repo>
 # - You can remove the $PATH setting from the env file
 # - You can remove the `/bin/bash -c` prefix from ExecStart
 # ExecSearchPath=<path-to-cloned-repo>/env/bin
-DynamicUser=
+DynamicUser=true
 # These two are optional, set if synapse runs locally as a systemd service
 # After=matrix-synapse.service
 # Wants=matrix-synapse.service
