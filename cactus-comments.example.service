@@ -1,5 +1,5 @@
 [Unit]
-Description=Cactus comments appservice: matrix powered embeddable comment backend
+Description=Cactus Comments appservice: Matrix powered embeddable comment backend
 
 [Service]
 Type=simple
