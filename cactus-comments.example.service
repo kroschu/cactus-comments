@@ -1,0 +1,52 @@
+[Unit]
+Description=Cactus Comments appservice: Matrix powered embeddable comment backend
+
+[Service]
+Type=simple
+ExecStart=/bin/bash -c 'gunicorn -w 4 -b 127.0.0.1:5000 --timeout 500 "app:create_app_from_env()"'
+Restart=always
+# Adjust this!
+EnvironmentFile=<path-to-cloned-repo>/env/appservice.env
+# Adjust this!
+WorkingDirectory=<path-to-cloned-repo>
+# This setting needs systemd version: 250
+# If uncommented (and adjusted!):
+# - You can remove the $PATH setting from the env file
+# - You can remove the `/bin/bash -c` prefix from ExecStart
+# ExecSearchPath=<path-to-cloned-repo>/env/bin
+DynamicUser=true
+# These two are optional, set if synapse runs locally as a systemd service
+# After=matrix-synapse.service
+# Wants=matrix-synapse.service
+
+# Security/sandboxing settings
+CapabilityBoundingSet=
+LockPersonality=true
+MemoryDenyWriteExecute=true
+# Implicitly set by `DynamicUser`
+# NoNewPrivileges=true
+PrivateDevices=true
+# Implicitly set by `DynamicUser`
+# PrivateTmp=true
+PrivateUsers=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHome=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectSystem=strict
+# Implicitly set by `DynamicUser`
+# RemoveIPC=true
+RestrictAddressFamilies=AF_INET
+RestrictNamespaces=true
+RestrictRealtime=true
+# Implicitly set by `DynamicUser`
+# RestrictSUIDSGID=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@resources
+
+[Install]
+WantedBy=multi-user.target
