@@ -263,22 +263,30 @@ def make_sure_user_is_registered():
         current_app.logger.info("Setting display name")
 
         # Change display name
-        requests.put(
-            current_app.config["homeserver"]
-            + f"/_matrix/client/r0/profile/{user_id}/displayname",
-            json={"displayname": "Cactus Comments"},
-            headers=current_app.config["auth_header"],
-        )
+        try:
+            requests.put(
+                current_app.config["homeserver"]
+                + f"/_matrix/client/r0/profile/{user_id}/displayname",
+                json={"displayname": "Cactus Comments"},
+                headers=current_app.config["auth_header"],
+                timeout=5,
+            )
+        except requests.exceptions.Timeout:
+            current_app.logger.info("Setting display name timed out.")
 
         current_app.logger.info("Setting profile image")
 
         # Change avatar / profile image
-        requests.put(
-            current_app.config["homeserver"]
-            + f"/_matrix/client/r0/profile/{user_id}/avatar_url",
-            json={"avatar_url": "mxc://matrix.org/gdgXnTHPpGqCsIPAaUNgoHHV"},
-            headers=current_app.config["auth_header"],
-        )
+        try:
+            requests.put(
+                current_app.config["homeserver"]
+                + f"/_matrix/client/r0/profile/{user_id}/avatar_url",
+                json={"avatar_url": "mxc://matrix.org/gdgXnTHPpGqCsIPAaUNgoHHV"},
+                headers=current_app.config["auth_header"],
+                timeout=5,
+            )
+        except requests.exceptions.Timeout:
+            current_app.logger.info("Setting profile image timed out.")
 
         current_app.config["registered"] = True
 
