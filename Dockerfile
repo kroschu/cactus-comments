@@ -2,6 +2,7 @@ FROM python:3.9.5-buster
 
 # Force the stdout and stderr streams from python to be unbuffered.
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
 COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt
