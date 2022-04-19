@@ -245,6 +245,8 @@ def make_sure_user_is_registered():
 
         user_id = current_app.config["user_id"]
 
+        current_app.logger.info("Registering user    user_id=%r", user_id)
+
         # Register user
         r = requests.post(
             current_app.config["homeserver"] + "/_matrix/client/r0/register",
@@ -258,6 +260,8 @@ def make_sure_user_is_registered():
         if not (r.ok or r.json()["errcode"] == "M_USER_IN_USE"):
             raise ValueError("Failed to register user.")
 
+        current_app.logger.info("Setting display name")
+
         # Change display name
         requests.put(
             current_app.config["homeserver"]
@@ -265,6 +269,8 @@ def make_sure_user_is_registered():
             json={"displayname": "Cactus Comments"},
             headers=current_app.config["auth_header"],
         )
+
+        current_app.logger.info("Setting profile image")
 
         # Change avatar / profile image
         requests.put(
@@ -275,6 +281,8 @@ def make_sure_user_is_registered():
         )
 
         current_app.config["registered"] = True
+
+        current_app.logger.info("Registration complete")
 
 
 @appservice_bp.route("/transactions/<string:txn_id>", methods=["PUT"])  # deprecated
