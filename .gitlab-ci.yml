@@ -107,6 +107,7 @@ Build:
     - Lint shell scripts
     - Lint Python
     - Build
+    - Run Tests
   image: alpine
   variables:
     GIT_STRATEGY: none  # We do not need the source code
