@@ -1,5 +1,9 @@
 ![](./appservice-banner.png)
 
+[![pipeline status](https://gitlab.com/cactus-comments/cactus-appservice/badges/main/pipeline.svg)](https://gitlab.com/cactus-comments/cactus-appservice/-/commits/main)
+[![](https://img.shields.io/badge/chat-%23cactus%3Acactus.chat-informational)](https://matrix.to/#/%23cactus:cactus.chat)
+[![](https://img.shields.io/badge/donate-via%20opencollective-orange)](https://opencollective.com/cactus-comments)
+
 [Cactus Comments](https://cactus.chat) is a federated comment system that you
 can embed anywhere. It respects your privacy, and puts you in control.
 
